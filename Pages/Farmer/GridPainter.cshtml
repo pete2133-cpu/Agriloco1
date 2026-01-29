@@ -1,0 +1,437 @@
+﻿@page
+@model Agriloco.Api.Pages.Farmer.GridPainterModel
+@using System
+@using System.Linq
+@inject IConfiguration Configuration
+
+@{
+    ViewData["Title"] = "Grid Painter";
+
+    var mapAddr = Request.Query["MapAddress"].ToString();
+    var mapZoom = string.IsNullOrWhiteSpace(Request.Query["MapZoom"]) ? "18" : Request.Query["MapZoom"].ToString();
+    var mapH = string.IsNullOrWhiteSpace(Request.Query["MapH"]) ? "520" : Request.Query["MapH"].ToString();
+
+    // Grid visual scale (CSS transform)
+    var gridScale = string.IsNullOrWhiteSpace(Request.Query["GridScale"]) ? "1" : Request.Query["GridScale"].ToString();
+
+    // Persist camera (optional)
+    var mapLat = Request.Query["MapLat"].ToString();
+    var mapLng = Request.Query["MapLng"].ToString();
+    var mapHeading = Request.Query["MapHeading"].ToString();
+    var mapTilt = Request.Query["MapTilt"].ToString();
+
+    if (Model.FarmId != null && string.IsNullOrWhiteSpace(mapAddr))
+    {
+        var farmName = Model.Farms.FirstOrDefault(x => x.Id == Model.FarmId)?.Name ?? "";
+        mapAddr = farmName;
+    }
+
+    var googleMapsKey = Configuration["GoogleMaps:ApiKey"] ?? "";
+    var googleMapsMapId = Configuration["GoogleMaps:MapId"] ?? "";
+}
+
+<h1 class="ag-title">Grid Painter</h1>
+
+@if (!string.IsNullOrWhiteSpace(Model.Message))
+{
+    <div class="ag-alert">@Model.Message</div>
+}
+
+<form method="get" class="ag-card" style="margin-bottom:16px;">
+    <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:end;">
+
+        <div>
+            <label>Farm</label><br />
+            <select name="FarmId">
+                <option value="">-- Select Farm --</option>
+                @foreach (var f in Model.Farms)
+                {
+                    <option value="@f.Id" selected="@(Model.FarmId == f.Id)">
+                        @f.Name (@f.RegionCode)
+                    </option>
+                }
+            </select>
+        </div>
+
+        <div>
+            <label>Address (for map)</label><br />
+            <input type="text"
+                   name="MapAddress"
+                   value="@(Request.Query["MapAddress"].ToString())"
+                   placeholder="e.g. 123 Farm Rd, Town, ON"
+                   style="min-width:320px;" />
+        </div>
+
+        <div>
+            <label>Zoom</label><br />
+            <input type="number"
+                   name="MapZoom"
+                   value="@(string.IsNullOrWhiteSpace(Request.Query["MapZoom"]) ? "18" : Request.Query["MapZoom"].ToString())"
+                   min="1" max="21"
+                   style="width:90px;" />
+        </div>
+
+        <div>
+            <label>Map Height</label><br />
+            <input type="number"
+                   name="MapH"
+                   value="@(string.IsNullOrWhiteSpace(Request.Query["MapH"]) ? "520" : Request.Query["MapH"].ToString())"
+                   min="240" max="1200"
+                   style="width:110px;" />
+        </div>
+
+        <div>
+            <label>W</label><br />
+            <input type="number" name="W" value="@Model.W" min="1" max="200" style="width:90px;" />
+        </div>
+
+        <div>
+            <label>H</label><br />
+            <input type="number" name="H" value="@Model.H" min="1" max="200" style="width:90px;" />
+        </div>
+
+        <div>
+            <label>Grid Scale</label><br />
+            <input type="number"
+                   name="GridScale"
+                   value="@gridScale"
+                   step="0.05"
+                   min="0.25"
+                   max="3"
+                   style="width:110px;" />
+        </div>
+
+        <div>
+            <label>Mode</label><br />
+            <select name="Mode">
+                <option value="paint" selected="@(Model.Mode == "paint")">Paint Crop</option>
+                <option value="label" selected="@(Model.Mode == "label")">Place Row Label</option>
+                <option value="erase" selected="@(Model.Mode == "erase")">Eraser (Clear)</option>
+            </select>
+        </div>
+
+        <div>
+            <label>Crop</label><br />
+            <select name="SelectedCropId">
+                <option value="0">-- Select Crop --</option>
+                @foreach (var c in Model.Crops)
+                {
+                    <option value="@c.Id" selected="@(Model.SelectedCropId == c.Id)">
+                        @c.Category @(string.IsNullOrWhiteSpace(c.Variety) ? "" : $"({c.Variety})") - @(c.Availability ?? "n/a")
+                    </option>
+                }
+            </select>
+        </div>
+
+        <input type="hidden" name="MapLat" value="@mapLat" />
+        <input type="hidden" name="MapLng" value="@mapLng" />
+        <input type="hidden" name="MapHeading" value="@mapHeading" />
+        <input type="hidden" name="MapTilt" value="@mapTilt" />
+
+        <div>
+            <button type="submit" class="ag-btn">Load</button>
+        </div>
+
+    </div>
+</form>
+
+@if (Model.FarmId != null)
+{
+    <div class="ag-card" style="padding:12px;">
+        <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:10px;">
+            <div class="ag-muted">
+                Map query: <b>@mapAddr</b>
+            </div>
+            <div class="ag-muted">
+                Tip: Click <b>Map Mode</b> to pan/zoom/rotate/pitch, then switch back to <b>Paint Mode</b>.
+            </div>
+        </div>
+
+        <div class="ag-map-wrap" style="position:relative; width:100%; height:@(mapH)px; border-radius:12px; overflow:hidden; border:1px solid rgba(0,0,0,0.12);">
+
+            <div id="gmap" style="position:absolute; inset:0; width:100%; height:100%;"></div>
+
+            <div style="position:absolute; top:10px; right:10px; z-index:50; display:flex; gap:8px; flex-wrap:wrap;">
+                <button type="button" id="btnToggleOverlay" class="ag-btn" style="padding:6px 10px;">Map Mode</button>
+
+                <button type="button" id="btnZoomIn" class="ag-btn" style="padding:6px 10px;">+</button>
+                <button type="button" id="btnZoomOut" class="ag-btn" style="padding:6px 10px;">-</button>
+
+                <button type="button" id="btnRotateLeft" class="ag-btn" style="padding:6px 10px;">⟲ 5°</button>
+                <button type="button" id="btnRotateRight" class="ag-btn" style="padding:6px 10px;">⟳ 5°</button>
+
+                <button type="button" id="btnPitchDown" class="ag-btn" style="padding:6px 10px;">Pitch −</button>
+                <button type="button" id="btnPitchUp" class="ag-btn" style="padding:6px 10px;">Pitch +</button>
+
+                <button type="button" id="btnResetNorth" class="ag-btn" style="padding:6px 10px;">N</button>
+            </div>
+
+            <div id="gridOverlay" style="position:absolute; inset:0; overflow:auto; padding:12px; pointer-events:auto; z-index:10;">
+                <div style="transform: scale(@gridScale); transform-origin: top left; width:max-content;">
+                    <div style="display:grid; grid-template-columns: repeat(@Model.W, 22px); grid-auto-rows: 22px; gap:2px; background: rgba(255,255,255,0.35); padding:10px; border-radius:10px; width:max-content;">
+                        @for (int y = 0; y < Model.H; y++)
+                        {
+                            for (int x = 0; x < Model.W; x++)
+                            {
+                                var bg = Model.TileBgCss(x, y);
+                                var isLabel = Model.IsLabel(x, y);
+
+                                <form method="post" style="margin:0;">
+                                    <input type="hidden" name="FarmId" value="@Model.FarmId" />
+                                    <input type="hidden" name="W" value="@Model.W" />
+                                    <input type="hidden" name="H" value="@Model.H" />
+                                    <input type="hidden" name="Mode" value="@Model.Mode" />
+                                    <input type="hidden" name="SelectedCropId" value="@Model.SelectedCropId" />
+                                    <input type="hidden" name="GridX" value="@x" />
+                                    <input type="hidden" name="GridY" value="@y" />
+
+                                    <input type="hidden" name="MapAddress" value="@mapAddr" />
+                                    <input type="hidden" name="MapZoom" value="@mapZoom" />
+                                    <input type="hidden" name="MapH" value="@mapH" />
+                                    <input type="hidden" name="GridScale" value="@gridScale" />
+
+                                    <input type="hidden" class="jsMapLat" name="MapLat" value="@mapLat" />
+                                    <input type="hidden" class="jsMapLng" name="MapLng" value="@mapLng" />
+                                    <input type="hidden" class="jsMapHeading" name="MapHeading" value="@mapHeading" />
+                                    <input type="hidden" class="jsMapTilt" name="MapTilt" value="@mapTilt" />
+
+                                    <button type="submit"
+                                            title="(@x,@y)"
+                                            style="width:22px;height:22px;border:1px solid rgba(0,0,0,0.18);padding:0;@bg">
+                                        @if (isLabel)
+                                        {
+                                            <span style="display:block; width:100%; height:100%; font-size:12px; line-height:20px; text-align:center;">T</span>
+                                        }
+                                    </button>
+                                </form>
+                            }
+                        }
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="ag-muted" style="margin-top:12px;">
+            <b>Modes:</b>
+            Paint Crop fills cells with that crop’s color • Place Row Label creates a label tile • Eraser clears to transparent.
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script>
+        const AGRILOCO_MAP_ADDR = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(mapAddr ?? ""));
+        const AGRILOCO_MAP_ZOOM = parseInt(@Html.Raw(System.Text.Json.JsonSerializer.Serialize(mapZoom ?? "18")), 10) || 18;
+        const AGRILOCO_MAP_ID = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(googleMapsMapId ?? ""));
+
+        const INIT_LAT = parseFloat(@Html.Raw(System.Text.Json.JsonSerializer.Serialize(mapLat ?? "")));
+        const INIT_LNG = parseFloat(@Html.Raw(System.Text.Json.JsonSerializer.Serialize(mapLng ?? "")));
+        const INIT_HEADING = parseFloat(@Html.Raw(System.Text.Json.JsonSerializer.Serialize(mapHeading ?? "")));
+        const INIT_TILT = parseFloat(@Html.Raw(System.Text.Json.JsonSerializer.Serialize(mapTilt ?? "")));
+
+        let agrilocoMap = null;
+        let overlayEnabled = true;
+
+        const ROT_STEP = 5;
+        const PITCH_STEP = 5;
+        const PITCH_MIN = 0;
+        const PITCH_MAX = 67.5;
+
+        function setOverlayMode(enabled) {
+            overlayEnabled = enabled;
+
+            const overlay = document.getElementById("gridOverlay");
+            const btn = document.getElementById("btnToggleOverlay");
+
+            if (!overlay || !btn) return;
+
+            if (overlayEnabled) {
+                overlay.style.pointerEvents = "auto";
+                btn.textContent = "Map Mode";
+            } else {
+                overlay.style.pointerEvents = "none";
+                btn.textContent = "Paint Mode";
+            }
+        }
+
+        function normalizeHeading(deg) {
+            let v = deg % 360;
+            if (v < 0) v += 360;
+            return v;
+        }
+
+        function snap(deg, step) {
+            return Math.round(deg / step) * step;
+        }
+
+        function clamp(v, min, max) {
+            return Math.max(min, Math.min(max, v));
+        }
+
+        function getHeading() {
+            const h = agrilocoMap?.getHeading?.();
+            return (typeof h === "number" && !isNaN(h)) ? h : 0;
+        }
+
+        function getTilt() {
+            const t = agrilocoMap?.getTilt?.();
+            return (typeof t === "number" && !isNaN(t)) ? t : 0;
+        }
+
+        function getCenter() {
+            const c = agrilocoMap?.getCenter?.();
+            if (!c) return null;
+            return { lat: c.lat(), lng: c.lng() };
+        }
+
+        function setCamera(headingDeg, tiltDeg) {
+            if (!agrilocoMap) return;
+
+            const h = normalizeHeading(headingDeg);
+            const t = clamp(tiltDeg, PITCH_MIN, PITCH_MAX);
+
+            if (typeof agrilocoMap.moveCamera === "function") {
+                agrilocoMap.moveCamera({ heading: h, tilt: t });
+            } else {
+                try { agrilocoMap.setHeading(h); } catch { }
+                try { agrilocoMap.setTilt(t); } catch { }
+            }
+        }
+
+        function persistCameraStateToHiddenInputs() {
+            const center = getCenter();
+            if (!center) return;
+
+            const h = getHeading();
+            const t = getTilt();
+
+            document.querySelectorAll(".jsMapLat").forEach(el => el.value = String(center.lat));
+            document.querySelectorAll(".jsMapLng").forEach(el => el.value = String(center.lng));
+            document.querySelectorAll(".jsMapHeading").forEach(el => el.value = String(h));
+            document.querySelectorAll(".jsMapTilt").forEach(el => el.value = String(t));
+        }
+
+        function rotateBy(deltaDeg) {
+            if (overlayEnabled) return;
+            const next = snap(getHeading() + deltaDeg, ROT_STEP);
+            setCamera(next, getTilt());
+            persistCameraStateToHiddenInputs();
+        }
+
+        function pitchBy(deltaDeg) {
+            if (overlayEnabled) return;
+            const next = snap(getTilt() + deltaDeg, PITCH_STEP);
+            setCamera(getHeading(), next);
+            persistCameraStateToHiddenInputs();
+        }
+
+        function resetNorth() {
+            if (overlayEnabled) return;
+            setCamera(0, getTilt());
+            persistCameraStateToHiddenInputs();
+        }
+
+        function initAgrilocoMap() {
+            agrilocoMap = new google.maps.Map(document.getElementById("gmap"), {
+                center: { lat: 43.6532, lng: -79.3832 },
+                zoom: AGRILOCO_MAP_ZOOM,
+
+                mapId: AGRILOCO_MAP_ID || undefined,
+                renderingType: google.maps.RenderingType.VECTOR,
+
+                mapTypeId: "hybrid",
+                tilt: 45,
+                heading: 0,
+
+                streetViewControl: false,
+                fullscreenControl: false,
+                mapTypeControl: true,
+                zoomControl: true
+            });
+
+            if (!isNaN(INIT_LAT) && !isNaN(INIT_LNG)) {
+                agrilocoMap.setCenter({ lat: INIT_LAT, lng: INIT_LNG });
+            }
+
+            if (!isNaN(INIT_HEADING) || !isNaN(INIT_TILT)) {
+                const hh = !isNaN(INIT_HEADING) ? INIT_HEADING : 0;
+                const tt = !isNaN(INIT_TILT) ? INIT_TILT : 45;
+                setTimeout(() => setCamera(hh, tt), 50);
+            } else {
+                setTimeout(() => setCamera(0, 45), 50);
+            }
+
+            const addr = (AGRILOCO_MAP_ADDR || "").trim();
+            if ((isNaN(INIT_LAT) || isNaN(INIT_LNG)) && addr.length > 0) {
+                const geocoder = new google.maps.Geocoder();
+                geocoder.geocode({ address: addr }, function (results, status) {
+                    if (status === "OK" && results && results.length > 0) {
+                        agrilocoMap.setCenter(results[0].geometry.location);
+                        agrilocoMap.setZoom(AGRILOCO_MAP_ZOOM);
+                        setCamera(0, 45);
+                        persistCameraStateToHiddenInputs();
+                    } else {
+                        console.warn("Geocode failed:", status);
+                    }
+                });
+            } else {
+                setTimeout(() => persistCameraStateToHiddenInputs(), 200);
+            }
+
+            agrilocoMap.addListener("idle", function () {
+                persistCameraStateToHiddenInputs();
+            });
+
+            setOverlayMode(true);
+
+            document.getElementById("btnToggleOverlay")?.addEventListener("click", function () {
+                persistCameraStateToHiddenInputs();
+                setOverlayMode(!overlayEnabled);
+            });
+
+            document.getElementById("btnZoomIn")?.addEventListener("click", function () {
+                agrilocoMap.setZoom((agrilocoMap.getZoom() || 0) + 1);
+                persistCameraStateToHiddenInputs();
+            });
+
+            document.getElementById("btnZoomOut")?.addEventListener("click", function () {
+                agrilocoMap.setZoom((agrilocoMap.getZoom() || 0) - 1);
+                persistCameraStateToHiddenInputs();
+            });
+
+            document.getElementById("btnRotateLeft")?.addEventListener("click", function () {
+                rotateBy(-ROT_STEP);
+            });
+
+            document.getElementById("btnRotateRight")?.addEventListener("click", function () {
+                rotateBy(ROT_STEP);
+            });
+
+            document.getElementById("btnPitchDown")?.addEventListener("click", function () {
+                pitchBy(-PITCH_STEP);
+            });
+
+            document.getElementById("btnPitchUp")?.addEventListener("click", function () {
+                pitchBy(PITCH_STEP);
+            });
+
+            document.getElementById("btnResetNorth")?.addEventListener("click", function () {
+                resetNorth();
+            });
+        }
+    </script>
+
+    @if (string.IsNullOrWhiteSpace(googleMapsKey))
+    {
+        <script>
+            console.warn("GoogleMaps:ApiKey is missing. Add it to appsettings.Development.json under GoogleMaps:ApiKey.");
+        </script>
+    }
+    else
+    {
+        <script async
+                src="https://maps.googleapis.com/maps/api/js?key=@googleMapsKey&callback=initAgrilocoMap&loading=async&v=weekly">
+        </script>
+    }
+}

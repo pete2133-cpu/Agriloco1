@@ -1,0 +1,89 @@
+﻿@page
+@model Agriloco.Api.Pages.Admin.CropCatalogModel
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+
+<h2>Admin – Crop Catalog</h2>
+
+@if (!string.IsNullOrWhiteSpace(Model.Message))
+{
+    <div style="padding:10px; margin:10px 0; border:1px solid #ccc;">
+        @Model.Message
+    </div>
+}
+
+<hr />
+
+<h3>Add Category</h3>
+<form method="post">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="action" value="addCategory" />
+
+    <div style="margin-bottom:10px; max-width:420px;">
+        <label>Category Name</label><br />
+        <input name="CategoryName" value="@Model.CategoryName" style="width:100%;" />
+    </div>
+
+    <button type="submit">Create Category</button>
+</form>
+
+<hr />
+
+<h3>Categories</h3>
+
+<form method="get" style="margin-bottom:10px; max-width:520px;">
+    <label>Select category to view varieties</label><br />
+    <select name="SelectedCategory" style="width:100%;" onchange="this.form.submit()">
+        <option value="">-- select --</option>
+        @foreach (var c in Model.Categories)
+        {
+            if (c == Model.SelectedCategory)
+            {
+                <option value="@c" selected>@c</option>
+            }
+            else
+            {
+                <option value="@c">@c</option>
+            }
+        }
+    </select>
+    <noscript>
+        <button type="submit" style="margin-top:8px;">Load</button>
+    </noscript>
+</form>
+
+@if (!string.IsNullOrWhiteSpace(Model.SelectedCategory))
+{
+    <h4>Varieties for: @Model.SelectedCategory</h4>
+
+    if (Model.Varieties.Count == 0)
+    {
+        <p><em>No varieties yet.</em></p>
+    }
+    else
+    {
+        <ul>
+            @foreach (var v in Model.Varieties)
+            {
+                <li>@v</li>
+            }
+        </ul>
+    }
+
+    <h4>Add Variety</h4>
+    <form method="post">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="action" value="addVariety" />
+        <input type="hidden" name="SelectedCategory" value="@Model.SelectedCategory" />
+
+        <div style="margin-bottom:10px; max-width:420px;">
+            <label>Variety Name</label><br />
+            <input name="VarietyName" value="@Model.VarietyName" style="width:100%;" />
+        </div>
+
+        <button type="submit">Create Variety</button>
+    </form>
+}
+else
+{
+    <p><em>Select a category above to view/add varieties.</em></p>
+}

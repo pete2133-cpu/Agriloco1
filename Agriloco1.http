@@ -1,0 +1,6 @@
+@Agriloco1_HostAddress = http://localhost:5296
+
+GET {{Agriloco1_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

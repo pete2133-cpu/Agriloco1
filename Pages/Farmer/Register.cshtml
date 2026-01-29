@@ -1,0 +1,57 @@
+﻿@page
+@model Agriloco.Api.Pages.Farmer.RegisterModel
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+
+<h2>Farmer Registration</h2>
+
+@if (!string.IsNullOrWhiteSpace(Model.Message))
+{
+    <div style="padding:10px; margin-bottom:12px; border:1px solid #ccc;">
+        @Model.Message
+    </div>
+}
+
+<form method="post" asp-antiforgery="true" style="max-width:520px;">
+    @Html.AntiForgeryToken()
+
+    <div style="margin-bottom:10px;">
+        <label>Farm Name *</label><br />
+        <input asp-for="Input.FarmName" style="width:100%;" />
+        <span asp-validation-for="Input.FarmName" style="color:red;"></span>
+    </div>
+
+    <div style="margin-bottom:10px;">
+        <label>Address *</label><br />
+        <input asp-for="Input.Address" style="width:100%;" />
+        <span asp-validation-for="Input.Address" style="color:red;"></span>
+    </div>
+
+    <div style="margin-bottom:10px;">
+        <label>Phone (optional)</label><br />
+        <input asp-for="Input.Phone" style="width:100%;" />
+    </div>
+
+    <div style="margin-bottom:10px;">
+        <label>Email *</label><br />
+        <input asp-for="Input.Email" style="width:100%;" />
+        <span asp-validation-for="Input.Email" style="color:red;"></span>
+    </div>
+
+    <div style="margin-bottom:10px;">
+        <label>Username *</label><br />
+        <input asp-for="Input.Username" style="width:100%;" />
+        <span asp-validation-for="Input.Username" style="color:red;"></span>
+    </div>
+
+    <div style="margin-bottom:10px;">
+        <label>Password *</label><br />
+        <input asp-for="Input.Password" type="password" style="width:100%;" />
+        <span asp-validation-for="Input.Password" style="color:red;"></span>
+    </div>
+
+    <button type="submit">Create Account</button>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

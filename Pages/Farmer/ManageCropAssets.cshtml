@@ -1,0 +1,76 @@
+﻿@page
+@model agriloco.api.Pages.Farmer.ManageCropAssetsModel
+@{
+    ViewData["Title"] = "Manage Crop Assets";
+}
+
+<h1>Manage Crop Assets</h1>
+
+<form method="get" class="mb-3">
+    <label for="FarmId">Farm ID:</label>
+    <input type="number" id="FarmId" name="FarmId" value="@Model.FarmId" />
+    <button type="submit">Load Farm</button>
+</form>
+
+@if (!string.IsNullOrEmpty(Model.Message))
+{
+    <div style="color:red;margin-bottom:10px;">
+        @Model.Message
+    </div>
+}
+
+@if (Model.Crops.Any())
+{
+    <table border="1" cellpadding="4" cellspacing="0">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Category</th>
+                <th>Variety</th>
+                <th>Availability</th>
+                <th>OfferingType</th>
+                <th>Save</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var crop in Model.Crops)
+            {
+                var formId = $"saveRow_{crop.Id}";
+                <tr>
+                    <td>@crop.Id</td>
+                    <td>@crop.Category</td>
+                    <td>@crop.Variety</td>
+
+                    <td>
+                        <select name="Availability" form="@formId">
+                            <option value="" selected="@(string.IsNullOrEmpty(crop.Availability) ? "selected" : null)">(empty)</option>
+                            <option value="Available" selected="@(crop.Availability == "Available" ? "selected" : null)">Available</option>
+                            <option value="NotAvailable" selected="@(crop.Availability == "NotAvailable" ? "selected" : null)">NotAvailable</option>
+                        </select>
+                    </td>
+
+                    <td>
+                        <select name="OfferingType" form="@formId">
+                            <option value="" selected="@(string.IsNullOrEmpty(crop.OfferingType) ? "selected" : null)">(empty)</option>
+                            <option value="PickYourOwn" selected="@(crop.OfferingType == "PickYourOwn" ? "selected" : null)">PickYourOwn</option>
+                            <option value="ReadyPicked" selected="@(crop.OfferingType == "ReadyPicked" ? "selected" : null)">ReadyPicked</option>
+                            <option value="Frozen" selected="@(crop.OfferingType == "Frozen" ? "selected" : null)">Frozen</option>
+                        </select>
+                    </td>
+
+                    <td>
+                        <form id="@formId" method="post" asp-page-handler="SaveRow">
+                            <input type="hidden" name="FarmId" value="@Model.FarmId" />
+                            <input type="hidden" name="CropId" value="@crop.Id" />
+                            <button type="submit">Save</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <p>No crops found for this farm.</p>
+}

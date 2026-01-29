@@ -1,0 +1,52 @@
+﻿@page
+@model Agriloco.Api.Pages.Dashboard.FarmerCropsModel
+@{
+    ViewData["Title"] = "Farmer Crops Dashboard";
+}
+
+<h1>Farmer Crops Dashboard</h1>
+
+<p>This is a simple dashboard showing all crops and allowing availability updates.</p>
+
+@if (Model.Crops.Count == 0)
+{
+    <p>No crops found.</p>
+}
+else
+{
+    <table border="1" cellpadding="5" cellspacing="0">
+        <thead>
+            <tr>
+                <th>Farm</th>
+                <th>Region</th>
+                <th>Category</th>
+                <th>Variety</th>
+                <th>Current Availability</th>
+                <th>Change Availability</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model.Crops)
+            {
+                <tr>
+                    <td>@item.FarmName</td>
+                    <td>@item.RegionCode</td>
+                    <td>@item.Category</td>
+                    <td>@item.Variety</td>
+                    <td>@item.Availability</td>
+                    <td>
+                        <form method="post" style="display:inline;">
+                            <input type="hidden" name="CropIdToUpdate" value="@item.CropId" />
+                            <select name="NewAvailability">
+                                <option value="">(Unknown)</option>
+                                <option value="Available" @(item.Availability == "Available" ? "selected" : "")>Available</option>
+                                <option value="NotAvailable" @(item.Availability == "NotAvailable" ? "selected" : "")>Not Available</option>
+                            </select>
+                            <button type="submit">Update</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

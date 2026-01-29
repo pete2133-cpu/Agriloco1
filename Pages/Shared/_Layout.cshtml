@@ -1,0 +1,43 @@
+﻿@{
+    var title = ViewData["Title"] as string ?? "Agriloco";
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@title</title>
+
+    <!-- Agriloco brand CSS -->
+    <link rel="stylesheet" href="~/css/agriloco.css" />
+</head>
+<body>
+    <div class="container-xl">
+        <div class="brandbar">
+            <div class="title">
+                <!-- If you add a logo later, put it in wwwroot/img/agriloco-flat.png -->
+                <!-- <img src="~/img/agriloco-flat.png" alt="Agriloco" /> -->
+                <div>
+                    <div style="font-size:18px;">Agriloco</div>
+                    <div style="font-size:12px;opacity:.9;">Find farms. Find fruit.</div>
+                </div>
+            </div>
+
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                <a class="btn btn-secondary" href="/Search/Crops">Search</a>
+                <a class="btn btn-soil" href="/Farmer/Register">Farmer</a>
+                <a class="btn btn-secondary" href="/Farmer/Crops">Add Crop</a>
+                <a class="btn btn-secondary" href="/Farmer/ManageCropAssets">Manage Crop</a>
+                <a class="btn btn-secondary" href="/Farmer/GridPainter">Grid</a>
+            </div>
+        </div>
+    </div>
+
+    <main class="container-xl">
+        @RenderBody()
+    </main>
+
+    @RenderSection("Scripts", required: false)
+</body>
+</html>

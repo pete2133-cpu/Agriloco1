@@ -1,0 +1,86 @@
+﻿@page
+@model agriloco.api.Pages.Search.CropsModel
+@{
+    ViewData["Title"] = "Search Crops";
+}
+
+<h1>Search Crops</h1>
+
+<form method="get" style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:12px;">
+    <div>
+        <label for="Category">Category</label><br />
+        <input id="Category" name="Category" value="@Model.Category" list="categoryList" />
+        <datalist id="categoryList">
+            @foreach (var c in Model.CategorySuggestions)
+            {
+                <option value="@c"></option>
+            }
+        </datalist>
+    </div>
+
+    <div>
+        <label for="Variety">Variety</label><br />
+        <input id="Variety" name="Variety" value="@Model.Variety" />
+    </div>
+
+    <div>
+        <label for="OfferingType">Offering Type</label><br />
+        <select id="OfferingType" name="OfferingType">
+            <option value="" selected="@(string.IsNullOrEmpty(Model.OfferingType) ? "selected" : null)">(any)</option>
+            <option value="PickYourOwn" selected="@(Model.OfferingType == "PickYourOwn" ? "selected" : null)">PickYourOwn</option>
+            <option value="ReadyPicked" selected="@(Model.OfferingType == "ReadyPicked" ? "selected" : null)">ReadyPicked</option>
+            <option value="Frozen" selected="@(Model.OfferingType == "Frozen" ? "selected" : null)">Frozen</option>
+        </select>
+    </div>
+
+    <div>
+        <label for="Availability">Availability</label><br />
+        <select id="Availability" name="Availability">
+            <option value="" selected="@(string.IsNullOrEmpty(Model.Availability) ? "selected" : null)">(any)</option>
+            <option value="Available" selected="@(Model.Availability == "Available" ? "selected" : null)">Available</option>
+            <option value="NotAvailable" selected="@(Model.Availability == "NotAvailable" ? "selected" : null)">NotAvailable</option>
+        </select>
+    </div>
+
+    <div>
+        <button type="submit">Search</button>
+    </div>
+</form>
+
+@if (!string.IsNullOrEmpty(Model.Message))
+{
+    <div style="color:red;margin-bottom:10px;">
+        @Model.Message
+    </div>
+}
+
+@if (Model.Results.Any())
+{
+    <table border="1" cellpadding="4" cellspacing="0">
+        <thead>
+            <tr>
+                <th>Category</th>
+                <th>Variety</th>
+                <th>Availability</th>
+                <th>OfferingType</th>
+                <th>FarmId</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var c in Model.Results)
+            {
+                <tr>
+                    <td>@c.Category</td>
+                    <td>@c.Variety</td>
+                    <td>@c.Availability</td>
+                    <td>@c.OfferingType</td>
+                    <td>@c.FarmId</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <p>No results.</p>
+}
