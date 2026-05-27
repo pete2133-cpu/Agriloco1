@@ -1,0 +1,312 @@
+﻿@page
+@model agriloco.api.Pages.Public.FarmModel
+@{
+    ViewData["Title"] = Model.Farm?.Name ?? "Farm";
+}
+
+<h2>@(Model.Farm?.Name ?? "Farm")</h2>
+
+@if (Model.Farm == null)
+{
+    <div class="alert alert-danger">Farm not found.</div>
+    return;
+}
+
+<div class="mb-2">
+    <div><strong>Region:</strong> @Model.Farm.RegionCode</div>
+    <div><strong>Address:</strong> @Model.Farm.Address</div>
+    <div><strong>Contact:</strong> @Model.Farm.ContactMethod1</div>
+</div>
+
+<hr />
+
+<h4>Crop List</h4>
+
+<!-- ✅ Notify status message -->
+<div id="agrilocoNotifyMsg" class="alert d-none" role="alert"></div>
+
+@if (Model.Crops == null || Model.Crops.Count == 0)
+{
+    <div class="text-muted">No crops listed for this farm yet.</div>
+}
+else
+{
+    <ul>
+        @foreach (var c in Model.Crops)
+        {
+            <li style="margin-bottom:8px;">
+                <strong>@c.Category</strong>
+                @if (!string.IsNullOrWhiteSpace(c.Variety))
+                {
+                    <span> - @c.Variety</span>
+                }
+                <span> | </span>
+                <span>@(string.IsNullOrWhiteSpace(c.Availability) ? "Unknown" : c.Availability)</span>
+
+                <!-- ✅ Email subscribe button -->
+                <button type="button"
+                        class="btn btn-sm btn-outline-primary agriloco-notify-btn"
+                        style="margin-left:10px;"
+                        data-farmid="@Model.Farm.Id"
+                        data-cropid="@c.Id">
+                    Email me when available
+                </button>
+            </li>
+        }
+    </ul>
+}
+
+<hr />
+
+<h4>Farm Map</h4>
+
+@if (string.IsNullOrWhiteSpace(Model.Farm.MapImageUrl))
+{
+    <div class="alert alert-warning">
+        No basemap uploaded yet for this farm.
+    </div>
+}
+else
+{
+    <div id="mapWrap" style="position:relative; width:100%; max-width:1100px; border:1px solid #ddd; overflow:hidden;">
+        <img id="basemapImg"
+             src="@Model.Farm.MapImageUrl"
+             alt="Farm map"
+             style="display:block; width:100%; height:auto;" />
+
+        <!-- overlay canvas sits on top of image -->
+        <canvas id="overlayCanvas"
+                style="position:absolute; left:0; top:0; pointer-events:none;"></canvas>
+    </div>
+
+    <div class="text-muted mt-2" style="font-size:0.9rem;">
+        Map icons reflect the farm’s latest crop availability.
+    </div>
+}
+
+@section Scripts {
+    <script>
+        // ============================================================
+        // ✅ (A) MAP OVERLAY RENDERING (icons from /wwwroot/icons via iconName)
+        // ============================================================
+        (function () {
+            const layout = @Html.Raw(Model.LayoutJson ?? "{}");
+
+            const wrap = document.getElementById("mapWrap");
+            const img = document.getElementById("basemapImg");
+            const canvas = document.getElementById("overlayCanvas");
+            if (!wrap || !img || !canvas) return;
+
+            const ctx = canvas.getContext("2d");
+
+            function resizeCanvasToImage() {
+                // canvas should match the displayed image size
+                const rect = img.getBoundingClientRect();
+                canvas.width = Math.max(1, Math.floor(rect.width));
+                canvas.height = Math.max(1, Math.floor(rect.height));
+                canvas.style.width = rect.width + "px";
+                canvas.style.height = rect.height + "px";
+            }
+
+            function clear() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+
+            function drawLines(lines, sx, sy) {
+                if (!lines) return;
+                ctx.save();
+                for (const ln of lines) {
+                    if (!ln) continue;
+                    ctx.beginPath();
+                    ctx.lineWidth = (ln.width || 2);
+                    const r = (ln.r ?? 0) * 255;
+                    const g = (ln.g ?? 0) * 255;
+                    const b = (ln.b ?? 0) * 255;
+                    const a = (ln.a ?? 1);
+                    ctx.strokeStyle = `rgba(${r},${g},${b},${a})`;
+
+                    ctx.moveTo((ln.x1 || 0) * sx, (ln.y1 || 0) * sy);
+                    ctx.lineTo((ln.x2 || 0) * sx, (ln.y2 || 0) * sy);
+                    ctx.stroke();
+                }
+                ctx.restore();
+            }
+
+            // ----------------------------
+            // Icon cache/loader for canvas
+            // ----------------------------
+            const iconCache = Object.create(null);
+
+            function normalizeIconName(name) {
+                if (!name) return null;
+                // If iconName already has an extension, keep it.
+                // Otherwise assume .png (change to .svg if you use svg).
+                return (/\.[a-z0-9]+$/i.test(name)) ? name : (name + ".png");
+            }
+
+            function getIconImage(iconName) {
+                const file = normalizeIconName(iconName);
+                if (!file) return null;
+
+                const url = `/icons/${file}`;
+
+                // cached?
+                if (iconCache[url]) return iconCache[url];
+
+                // create + start loading
+                const icon = new Image();
+                icon.src = url;
+
+                // force repaint when it loads so icons pop in
+                icon.onload = () => render();
+
+                // keep fallback dots if missing
+                icon.onerror = () => { /* no-op */ };
+
+                iconCache[url] = icon;
+                return icon;
+            }
+
+            // Marker renderer: draws Unity iconName from wwwroot/icons + label.
+            // Falls back to colored dot until the icon loads / if missing.
+                   function drawMarkers(markers, sx, sy) {
+            if (!markers) return;
+
+            ctx.save();
+
+            for (const m of markers) {
+                if (!m) continue;
+
+                const x = (m.x || 0) * sx;
+                const y = (m.y || 0) * sy;
+
+                const availability = (m.availability || "").toLowerCase();
+                let fill = "rgba(128,128,128,0.9)"; // unknown
+                if (availability === "available") fill = "rgba(0,180,0,0.9)";
+                if (availability === "notavailable") fill = "rgba(200,0,0,0.9)";
+
+                const iconSize = 24; // adjust if needed
+                const half = iconSize / 2;
+
+                const icon = getIconImage(m.iconName);
+
+                if (icon && icon.complete && icon.naturalWidth > 0) {
+                    ctx.drawImage(icon, x - half, y - half, iconSize, iconSize);
+                } else {
+                    // fallback dot while icon loads or if missing
+                    ctx.beginPath();
+                    ctx.fillStyle = fill;
+                    ctx.arc(x, y, 8, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            ctx.restore();
+        }
+
+            function render() {
+                clear();
+
+                const surfaceW = layout.surfaceWidth || 0;
+                const surfaceH = layout.surfaceHeight || 0;
+
+                // If your stored coords are normalized (0..1), sx/sy should be canvas width/height.
+                // If your stored coords are in "surface pixels", sx/sy should be canvas/surface.
+                // Your payload has surfaceWidth/surfaceHeight, so we’ll use that when present.
+                let sx = canvas.width;
+                let sy = canvas.height;
+
+                if (surfaceW > 0 && surfaceH > 0) {
+                    sx = canvas.width / surfaceW;
+                    sy = canvas.height / surfaceH;
+                }
+
+                drawLines(layout.lines, sx, sy);
+                drawMarkers(layout.markers, sx, sy);
+            }
+
+            img.addEventListener("load", function () {
+                resizeCanvasToImage();
+                render();
+            });
+
+            window.addEventListener("resize", function () {
+                if (!img.complete) return;
+                resizeCanvasToImage();
+                render();
+            });
+
+            // If image is cached and already loaded
+            if (img.complete) {
+                resizeCanvasToImage();
+                render();
+            }
+        })();
+
+
+        // ============================================================
+        // ✅ (B) EMAIL SUBSCRIBE BUTTONS (unchanged)
+        // ============================================================
+        (function () {
+            function showMsg(text, kind) {
+                const el = document.getElementById("agrilocoNotifyMsg");
+                if (!el) return;
+
+                el.classList.remove("d-none", "alert-success", "alert-danger", "alert-info");
+                if (kind === "success") el.classList.add("alert-success");
+                else if (kind === "danger") el.classList.add("alert-danger");
+                else el.classList.add("alert-info");
+
+                el.textContent = text;
+            }
+
+            async function subscribeCrop(farmId, cropId, email) {
+                const resp = await fetch("/api/Alerts/subscribe-crop", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        farmId: Number(farmId),
+                        cropId: Number(cropId),
+                        email: email
+                    })
+                });
+
+                if (!resp.ok) {
+                    const txt = await resp.text();
+                    throw new Error(txt || ("HTTP " + resp.status));
+                }
+
+                return await resp.json();
+            }
+
+            document.addEventListener("click", async function (e) {
+                const btn = e.target.closest(".agriloco-notify-btn");
+                if (!btn) return;
+
+                const farmId = btn.getAttribute("data-farmid");
+                const cropId = btn.getAttribute("data-cropid");
+
+                if (!farmId || !cropId) {
+                    showMsg("Missing farmId or cropId on button.", "danger");
+                    return;
+                }
+
+                const email = prompt("Enter your email to get a ONE-TIME alert when this crop becomes Available:");
+                if (!email) return;
+
+                try {
+                    showMsg("Subscribing…", "info");
+                    const result = await subscribeCrop(farmId, cropId, email.trim());
+
+                    if (result && result.status === "already_subscribed") {
+                        showMsg("You’re already subscribed for this crop. You'll get one email when it becomes Available.", "info");
+                    } else {
+                        showMsg("Subscribed! You’ll receive one email when the crop becomes Available.", "success");
+                    }
+                } catch (err) {
+                    showMsg("Subscribe failed: " + (err.message || err), "danger");
+                }
+            });
+        })();
+    </script>
+}

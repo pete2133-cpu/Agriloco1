@@ -2,11 +2,13 @@
 {
     public class MemberRegisterIn
     {
-        // Farm fields (creates the farm)
         public string FarmName { get; set; } = "";
         public string Address { get; set; } = "";
 
-        // Member fields
+        // NEW: optional geo at signup (manual now; later can be filled by anything)
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
+
         public string Email { get; set; } = "";
         public string? Phone { get; set; }
         public string? AltEmail { get; set; }

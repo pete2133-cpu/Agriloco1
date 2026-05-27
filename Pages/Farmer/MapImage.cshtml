@@ -1,0 +1,101 @@
+﻿@page
+@model Agriloco.Api.Pages.Farmer.MapImageModel
+@{
+    ViewData["Title"] = "Farm Map Image";
+}
+
+<h2>Farm Map Image Upload</h2>
+
+<form method="get">
+    <label>Select Farm:</label>
+    <select name="farmId">
+        <option value="">-- choose --</option>
+        @foreach (var f in Model.AllFarms)
+        {
+            var selected = (Model.FarmId == f.Id) ? "selected" : "";
+            <option value="@f.Id" selected="@selected">@f.Id - @f.Name</option>
+        }
+    </select>
+    <button type="submit">Load</button>
+</form>
+
+<hr />
+
+@if (Model.SelectedFarm == null)
+{
+    <p>Select a farm above to view details and upload a map image.</p>
+}
+else
+{
+    <h3>Farm Details</h3>
+    <div>
+        <strong>ID:</strong> @Model.SelectedFarm.Id <br />
+        <strong>Name:</strong> @Model.SelectedFarm.Name <br />
+        <strong>Address:</strong> @Model.SelectedFarm.Address <br />
+        <strong>Contact:</strong> @Model.SelectedFarm.ContactMethod1 <br />
+        <strong>Category:</strong> @Model.SelectedFarm.FruitCategory1 <br />
+        <strong>Active:</strong> @Model.SelectedFarm.IsActive <br />
+        <strong>Map Image URL:</strong> @(Model.SelectedFarm.MapImageUrl ?? "(none)") <br />
+        <strong>Uploaded At:</strong> @(Model.SelectedFarm.MapImageUploadedAt?.ToString("u") ?? "(none)") <br />
+    </div>
+
+    <h4>Crops for this Farm</h4>
+    @if (Model.FarmCrops.Count == 0)
+    {
+        <p>(No crops found for this farm.)</p>
+    }
+    else
+    {
+        <table border="1" cellpadding="6">
+            <thead>
+                <tr>
+                    <th>Id</th>
+                    <th>Category</th>
+                    <th>Variety</th>
+                    <th>Availability</th>
+                    <th>OfferingType</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var c in Model.FarmCrops)
+                {
+                    <tr>
+                        <td>@c.Id</td>
+                        <td>@c.Category</td>
+                        <td>@(c.Variety ?? "")</td>
+                        <td>@(c.Availability ?? "Unknown")</td>
+                        <td>@(c.OfferingType ?? "")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    <hr />
+
+    <h3>Upload / Replace Map Image</h3>
+
+    <form method="post" enctype="multipart/form-data">
+        <input type="hidden" asp-for="FarmId" />
+
+        <input type="file" asp-for="MapImageFile" accept=".jpg,.jpeg,.png,.webp" />
+        <button type="submit">Upload</button>
+    </form>
+
+    @if (!string.IsNullOrWhiteSpace(Model.UploadMessage))
+    {
+        <p><strong>@Model.UploadMessage</strong></p>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(Model.SelectedFarm.MapImageUrl))
+    {
+        <h4>Preview</h4>
+        <img src="@Model.SelectedFarm.MapImageUrl" style="max-width: 900px; width: 100%; border: 1px solid #ccc;" />
+        <p>
+            Unity can fetch it via:
+            <code>/api/Farms/@Model.SelectedFarm.Id/map-image</code>
+            or directly:
+            <code>@Model.SelectedFarm.MapImageUrl</code>
+        </p>
+    }
+}

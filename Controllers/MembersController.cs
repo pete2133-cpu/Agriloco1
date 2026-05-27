@@ -21,7 +21,6 @@ namespace Agriloco.Api.Controllers
             _context = context;
         }
 
-        // POST: api/member/register
         [HttpPost("register")]
         public async Task<ActionResult<MemberPublicOut>> Register(MemberRegisterIn input)
         {
@@ -34,7 +33,6 @@ namespace Agriloco.Api.Controllers
                 return BadRequest("FarmName, Address, Email, Username, and Password are required.");
             }
 
-            // Uniqueness checks
             var usernameTaken = await _context.Members.AnyAsync(m => m.Username == input.Username);
             if (usernameTaken)
                 return BadRequest("Username is already taken.");
@@ -43,7 +41,6 @@ namespace Agriloco.Api.Controllers
             if (emailTaken)
                 return BadRequest("Email is already in use.");
 
-            // Create the farm first (RegionCode placeholder for now)
             var farm = new Farm
             {
                 Name = input.FarmName.Trim(),
@@ -52,13 +49,16 @@ namespace Agriloco.Api.Controllers
                 ContactMethod1 = input.Email.Trim(),
                 FruitCategory1 = "Mixed",
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+
+                // NEW: optional geo fields at signup
+                Latitude = input.Latitude,
+                Longitude = input.Longitude
             };
 
             _context.Farms.Add(farm);
             await _context.SaveChangesAsync();
 
-            // Create member (store only FarmId on member; farm details live in Farm table)
             var member = new Member
             {
                 FarmId = farm.Id,
@@ -67,8 +67,6 @@ namespace Agriloco.Api.Controllers
                 Phone = string.IsNullOrWhiteSpace(input.Phone) ? null : input.Phone.Trim(),
                 Username = input.Username.Trim(),
 
-                // NOTE: this is NOT secure hashing, just a temporary byte[] so your model compiles.
-                // Later we should replace with proper hashing (or ASP.NET Identity).
                 PasswordHash = Encoding.UTF8.GetBytes(input.Password),
 
                 CreatedAt = DateTime.UtcNow,
@@ -97,7 +95,6 @@ namespace Agriloco.Api.Controllers
             return CreatedAtAction(nameof(GetMemberById), new { id = member.Id }, output);
         }
 
-        // GET: api/member/{id}
         [HttpGet("{id:int}")]
         public async Task<ActionResult<MemberPublicOut>> GetMemberById(int id)
         {
@@ -106,6 +103,8 @@ namespace Agriloco.Api.Controllers
                 return NotFound();
 
             var farm = await _context.Farms.FirstOrDefaultAsync(f => f.Id == member.FarmId);
+            if (farm == null)
+                return NotFound();
 
             var output = new MemberPublicOut
             {
@@ -116,7 +115,7 @@ namespace Agriloco.Api.Controllers
                 FarmName = farm.Name,
 
                 Name = farm.Name,
-                RegionCode = farm.RegionCode,
+                RegionCode = farm.RegionCode ?? "",
 
                 Email = member.Email,
                 AltEmail = member.AltEmail,
@@ -128,7 +127,6 @@ namespace Agriloco.Api.Controllers
             return Ok(output);
         }
 
-        // GET: api/member/byusername/{username}
         [HttpGet("byusername/{username}")]
         public async Task<ActionResult<MemberPublicOut>> GetMemberByUsername(string username)
         {
@@ -140,6 +138,8 @@ namespace Agriloco.Api.Controllers
                 return NotFound();
 
             var farm = await _context.Farms.FirstOrDefaultAsync(f => f.Id == member.FarmId);
+            if (farm == null)
+                return NotFound();
 
             var output = new MemberPublicOut
             {
@@ -150,7 +150,7 @@ namespace Agriloco.Api.Controllers
                 FarmName = farm.Name,
 
                 Name = farm.Name,
-                RegionCode = farm.RegionCode,
+                RegionCode = farm.RegionCode ?? "",
 
                 Email = member.Email,
                 AltEmail = member.AltEmail,

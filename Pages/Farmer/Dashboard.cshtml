@@ -1,0 +1,432 @@
+﻿@page
+@model agriloco.api.Pages.Farmer.DashboardModel
+@{
+    ViewData["Title"] = "Farmer Dashboard";
+}
+
+<div class="container mt-4">
+
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+        <div>
+            <h2 class="mb-0">Farmer Dashboard</h2>
+            <small class="text-muted">Everything in one place (no jumping between pages)</small>
+        </div>
+
+        <!-- Farm selector (GET) -->
+        <form method="get" class="d-flex align-items-center gap-2">
+            <label class="form-label mb-0" for="FarmId"><strong>Farm ID</strong></label>
+            <input class="form-control form-control-sm" style="width:120px"
+                   type="number" min="1" id="FarmId" name="FarmId" value="@Model.FarmId" />
+            <button class="btn btn-sm btn-primary" type="submit">Load</button>
+        </form>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Model.Message))
+    {
+        <div class="alert alert-info">@Model.Message</div>
+    }
+
+    <!-- Quick actions row -->
+    <div class="d-flex flex-wrap gap-2 mb-4">
+        <a class="btn btn-outline-secondary" href="/Search/Crops">Back to Search</a>
+
+        <a class="btn btn-outline-success"
+           href="/public/farm?id=@Model.FarmId"
+           target="_blank" rel="noopener">
+            Open Public Farm Page (new tab)
+        </a>
+
+        <button class="btn btn-outline-primary" type="button" id="openUnityBtn">
+            Open Map Editor (Unity)
+        </button>
+
+        <button class="btn btn-outline-secondary" type="button" id="setUnityUrlBtn">
+            Set Map Editor URL
+        </button>
+
+        <span class="text-muted align-self-center" id="unityUrlStatus"></span>
+    </div>
+
+    <!-- SECTION: Update Farm Information -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h4 class="card-title mb-2">Update Farm Information</h4>
+            <small class="text-muted">This appears on your public farm page.</small>
+
+            <form method="post" asp-page-handler="UpdateFarm" class="row g-3 mt-1">
+                <input type="hidden" name="FarmId" value="@Model.FarmId" />
+
+                <div class="col-md-6">
+                    <label class="form-label">Farm Name</label>
+                    <input class="form-control" name="FarmEdit.Name" value="@Model.FarmEdit?.Name" />
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Contact (Email / Phone)</label>
+                    <input class="form-control" name="FarmEdit.ContactMethod1" value="@Model.FarmEdit?.ContactMethod1" placeholder="example@farm.com or 555-555-5555" />
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label">Address</label>
+                    <input class="form-control" name="FarmEdit.Address" value="@Model.FarmEdit?.Address" />
+                </div>
+
+                <div class="col-12 d-flex flex-wrap align-items-center gap-2">
+                    <button class="btn btn-primary" type="submit">Save Farm Information</button>
+
+                    <!-- ✅ NEW: Geocode button -->
+                    <button class="btn btn-outline-success"
+                            type="button"
+                            id="geoBtn"
+                            data-farmid="@Model.FarmId">
+                        Set farm location from address (Google)
+                    </button>
+
+                    <span class="text-muted" id="geoStatus"></span>
+                </div>
+
+                <div class="col-12">
+                    @if (Model.CurrentLat.HasValue && Model.CurrentLng.HasValue)
+                    {
+                        <div class="text-muted" style="font-size:0.95rem;">
+                            Current Lat/Lng: <strong>@Model.CurrentLat.Value</strong>, <strong>@Model.CurrentLng.Value</strong>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-muted" style="font-size:0.95rem;">
+                            Current Lat/Lng: not set yet.
+                        </div>
+                    }
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- SECTION: Add Crop -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h4 class="card-title mb-3">Add New Crop</h4>
+
+            <form method="post" asp-page-handler="AddCrop" class="row g-3">
+                <input type="hidden" name="FarmId" value="@Model.FarmId" />
+
+                <div class="col-md-3">
+                    <label class="form-label">Category</label>
+                    <select class="form-select" id="newCropCategory" name="NewCrop.Category">
+                        <option value="">-- Select Category --</option>
+                        @foreach (var cat in Model.CategoryOptions)
+                        {
+                            <option value="@cat" selected="@(cat.Equals(Model.NewCrop?.Category ?? "", StringComparison.OrdinalIgnoreCase))">@cat</option>
+                        }
+                    </select>
+                    <div class="form-text text-muted">Pulled from existing crops.</div>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">Variety</label>
+                    <select class="form-select" id="newCropVariety" name="NewCrop.Variety">
+                        <option value="">-- Select Variety --</option>
+                        @* Options injected by JS based on category *@
+                    </select>
+                    <div class="form-text text-muted">Varieties update when Category changes.</div>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">Availability</label>
+                    <select class="form-select" name="NewCrop.Availability">
+                        <option value="">-- Select --</option>
+                        <option value="Available" selected="@("Available" == Model.NewCrop?.Availability)">Available</option>
+                        <option value="NotAvailable" selected="@("NotAvailable" == Model.NewCrop?.Availability)">Not Available</option>
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">Offering Type</label>
+                    <select class="form-select" name="NewCrop.OfferingType">
+                        <option value="">-- Select --</option>
+                        <option value="PickYourOwn" selected="@("PickYourOwn" == Model.NewCrop?.OfferingType)">Pick Your Own</option>
+                        <option value="ReadyPicked" selected="@("ReadyPicked" == Model.NewCrop?.OfferingType)">Ready Picked</option>
+                    </select>
+                </div>
+
+                <div class="col-12">
+                    <button class="btn btn-success" type="submit">Add Crop</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- SECTION: Manage Crop Assets -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h4 class="card-title mb-3">Manage Crop Assets</h4>
+            <small class="text-muted">Edit fields then click Save on the row.</small>
+
+            <div class="table-responsive mt-3">
+                <table class="table table-sm table-bordered align-middle">
+                    <thead>
+                        <tr>
+                            <th style="width:70px;">Id</th>
+                            <th>Category</th>
+                            <th>Variety</th>
+                            <th style="width:170px;">Availability</th>
+                            <th style="width:180px;">Offering Type</th>
+                            <th style="width:130px;">Year Planted</th>
+                            <th style="width:200px;">Private Notes</th>
+                            <th>Public Notes</th>
+                            <th style="width:110px;">Save</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @foreach (var crop in Model.FarmCrops)
+                        {
+                            var formId = $"saveForm_{crop.Id}";
+                            <tr>
+                                <td>@crop.Id</td>
+                                <td>@crop.Category</td>
+                                <td>@crop.Variety</td>
+
+                                <td>
+                                    <select class="form-select form-select-sm"
+                                            name="availability"
+                                            form="@formId">
+                                        <option value="">--</option>
+                                        <option value="Available" selected="@("Available" == crop.Availability)">Available</option>
+                                        <option value="NotAvailable" selected="@("NotAvailable" == crop.Availability)">Not Available</option>
+                                    </select>
+                                </td>
+
+                                <td>
+                                    <select class="form-select form-select-sm"
+                                            name="offeringType"
+                                            form="@formId">
+                                        <option value="">--</option>
+                                        <option value="PickYourOwn" selected="@("PickYourOwn" == crop.OfferingType)">Pick Your Own</option>
+                                        <option value="ReadyPicked" selected="@("ReadyPicked" == crop.OfferingType)">Ready Picked</option>
+                                    </select>
+                                </td>
+
+                                <td>
+                                    <input class="form-control form-control-sm"
+                                           type="number"
+                                           min="0"
+                                           name="yearPlanted"
+                                           value="@(crop.YearPlanted ?? 0)"
+                                           form="@formId" />
+                                </td>
+
+                                <td>
+                                    <input class="form-control form-control-sm"
+                                           name="rootstock"
+                                           value="@crop.Rootstock"
+                                           form="@formId"
+                                           placeholder="Private notes..." />
+                                </td>
+
+                                <td>
+                                    <input class="form-control form-control-sm"
+                                           name="notes"
+                                           value="@crop.Notes"
+                                           form="@formId"
+                                           placeholder="Public notes..." />
+                                </td>
+
+                                <td>
+                                    <form id="@formId" method="post" asp-page-handler="SaveRow">
+                                        <input type="hidden" name="FarmId" value="@Model.FarmId" />
+                                        <input type="hidden" name="cropId" value="@crop.Id" />
+                                        <button class="btn btn-sm btn-primary" type="submit">Save</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- SECTION: Basemap Image Upload (last) -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h4 class="card-title mb-2">Basemap Image (for Unity)</h4>
+            <small class="text-muted">
+                Upload a farm map image. This will be used later as the Unity basemap.
+            </small>
+
+            @if (!string.IsNullOrWhiteSpace(Model.UploadMessage))
+            {
+                <div class="alert alert-info mt-3">@Model.UploadMessage</div>
+            }
+
+            <form method="post" asp-page-handler="UploadMapImage" enctype="multipart/form-data" class="row g-3 mt-1">
+                <input type="hidden" name="FarmId" value="@Model.FarmId" />
+
+                <div class="col-md-6">
+                    <label class="form-label">Choose image (JPG / PNG / WebP)</label>
+                    <input class="form-control" type="file" name="MapImageFile" accept=".jpg,.jpeg,.png,.webp" />
+                </div>
+
+                <div class="col-md-6 d-flex align-items-end">
+                    <button class="btn btn-primary" type="submit">Upload Basemap</button>
+                </div>
+            </form>
+
+            @if (!string.IsNullOrWhiteSpace(Model.CurrentMapImageUrl))
+            {
+                <hr class="my-3" />
+                <div class="d-flex flex-wrap align-items-start gap-3">
+                    <div>
+                        <div class="fw-semibold mb-1">Current basemap URL</div>
+                        <a href="@Model.CurrentMapImageUrl" target="_blank" rel="noopener">@Model.CurrentMapImageUrl</a>
+                    </div>
+
+                    <div style="max-width:520px;">
+                        <div class="fw-semibold mb-1">Preview</div>
+                        <img src="@Model.CurrentMapImageUrl"
+                             alt="Basemap preview"
+                             class="img-fluid rounded border" />
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="text-muted mt-3">No basemap uploaded yet.</div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Unity URL buttons (your existing code)
+        (function () {
+            const statusEl = document.getElementById('unityUrlStatus');
+            const openBtn = document.getElementById('openUnityBtn');
+            const setBtn = document.getElementById('setUnityUrlBtn');
+
+            function refreshStatus() {
+                const url = localStorage.getItem('agriloco_unity_url');
+                if (url && url.startsWith('http')) {
+                    statusEl.textContent = `Map editor set: ${url}`;
+                    openBtn.disabled = false;
+                } else {
+                    statusEl.textContent = 'Map editor URL not set.';
+                    openBtn.disabled = true;
+                }
+            }
+
+            setBtn.addEventListener('click', function () {
+                const current = localStorage.getItem('agriloco_unity_url') || '';
+                const url = prompt('Paste your Unity WebGL URL:', current);
+
+                if (url && url.startsWith('http')) {
+                    localStorage.setItem('agriloco_unity_url', url);
+                }
+                refreshStatus();
+            });
+
+            openBtn.addEventListener('click', function () {
+                const url = localStorage.getItem('agriloco_unity_url');
+                if (url && url.startsWith('http')) {
+                    window.open(url, '_blank', 'noopener');
+                }
+            });
+
+            refreshStatus();
+        })();
+    </script>
+
+    <script>
+        // ✅ NEW: Geocode farm address to Lat/Lng
+        (function () {
+            const btn = document.getElementById("geoBtn");
+            const statusEl = document.getElementById("geoStatus");
+            if (!btn || !statusEl) return;
+
+            btn.addEventListener("click", async function () {
+                const farmId = btn.getAttribute("data-farmid");
+                if (!farmId) return;
+
+                if (!confirm("Use your saved farm address to set Latitude/Longitude using Google?")) return;
+
+                statusEl.textContent = "Geocoding…";
+
+                try {
+                    const resp = await fetch(`/api/farms/${farmId}/geocode-address`, { method: "POST" });
+                    const text = await resp.text();
+
+                    let data = null;
+                    try { data = JSON.parse(text); } catch { /* ignore */ }
+
+                    if (!resp.ok) {
+                        statusEl.textContent = "Failed: " + (data?.error || data?.googleStatus || text || ("HTTP " + resp.status));
+                        return;
+                    }
+
+                    statusEl.textContent = `Saved! ${data.latitude}, ${data.longitude}`;
+                    location.reload();
+                } catch (err) {
+                    statusEl.textContent = "Error: " + (err.message || err);
+                }
+            });
+        })();
+    </script>
+
+    <script>
+        // Category -> Variety dropdown logic
+        (function () {
+            // VarietyOptionsJson is already JSON (ex: {"Apple":["Empire","Gala"]})
+            const varietyMap = @Html.Raw(Model.VarietyOptionsJson ?? "{}");
+
+            const catSel = document.getElementById("newCropCategory");
+            const varSel = document.getElementById("newCropVariety");
+            if (!catSel || !varSel) return;
+
+            const serverSelectedVariety = "@(Model.NewCrop?.Variety ?? "")";
+
+            function clearVarieties() {
+                varSel.innerHTML = "";
+                const opt0 = document.createElement("option");
+                opt0.value = "";
+                opt0.textContent = "-- Select Variety --";
+                varSel.appendChild(opt0);
+            }
+
+            function setVarietyOptions(category) {
+                clearVarieties();
+                if (!category) return;
+
+                // exact match (case-insensitive)
+                const key = Object.keys(varietyMap)
+                    .find(k => (k || "").toLowerCase() === category.toLowerCase());
+
+                const list = key ? (varietyMap[key] || []) : [];
+
+                for (const v of list) {
+                    const opt = document.createElement("option");
+                    opt.value = v;
+                    opt.textContent = v;
+                    varSel.appendChild(opt);
+                }
+            }
+
+            function selectIfExists(value) {
+                if (!value) return;
+                const match = Array.from(varSel.options)
+                    .find(o => (o.value || "").toLowerCase() === value.toLowerCase());
+                if (match) varSel.value = match.value;
+            }
+
+            setVarietyOptions(catSel.value);
+            selectIfExists(serverSelectedVariety);
+
+            catSel.addEventListener("change", function () {
+                setVarietyOptions(catSel.value);
+            });
+        })();
+    </script>
+}

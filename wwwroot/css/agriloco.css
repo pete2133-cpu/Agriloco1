@@ -1,264 +1,260 @@
-﻿:root {
-    --green: #1F7A3A;
-    --green-dark: #145A2A;
-    --blue: #2D9CDB;
-    --brown: #7A4A1F;
-    --gold: #F2C94C;
-    --bg: #F7F9FB;
-    --ink: #1B1F24;
-    --muted: #5B6470;
-    --border: #E6E8EC;
-    --radius: 16px;
-    --shadow: 0 10px 30px rgba(0,0,0,.08);
-    --shadow-sm: 0 6px 18px rgba(0,0,0,.06);
-    --font: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+﻿/* ============================================================
+   Agriloco Theme: Clean Layout + Orchard Green & Soil Brown
+   - Designed to override Bootstrap nicely
+   - Light farm-friendly background, modern cards, soft shadows
+   ============================================================ */
+
+:root {
+    /* Backgrounds */
+    --ag-bg: #f3f7f2; /* very light orchard wash */
+    --ag-bg2: #eef4ea; /* subtle variation for gradients */
+    --ag-card: #ffffff; /* card surface */
+    --ag-cream: #fbfbf6; /* warm alt surface */
+    /* Text */
+    --ag-text: #163022; /* deep green (instead of black) */
+    --ag-muted: #4a5f52; /* muted green-gray */
+    --ag-subtle: #6b7d72; /* secondary text */
+    /* Borders & shadows */
+    --ag-border: rgba(22, 48, 34, 0.14);
+    --ag-border-soft: rgba(22, 48, 34, 0.10);
+    --ag-shadow: 0 10px 28px rgba(16, 24, 16, 0.08);
+    --ag-shadow-soft: 0 8px 18px rgba(16, 24, 16, 0.06);
+    /* Brand accents */
+    --ag-green: #2f7d3b; /* apple leaf */
+    --ag-green-2: #3f9a4c; /* brighter apple green */
+    --ag-green-soft: rgba(63, 154, 76, 0.14);
+    --ag-brown: #7a4f2a; /* soil/wood */
+    --ag-brown-2: #9a6a3a; /* warm highlight */
+    --ag-brown-soft: rgba(122, 79, 42, 0.14);
+    /* Status */
+    --ag-success: #2f7d3b;
+    --ag-danger: #b63a2b;
+    --ag-info: #2c6f61;
+    /* Radius & spacing */
+    --ag-radius: 16px;
+    --ag-radius-sm: 12px;
 }
 
+/* ---------- Base page ---------- */
+
 html, body {
-    background: var(--bg);
-    color: var(--ink);
-    font-family: var(--font);
+    height: 100%;
+}
+
+body {
+    background: radial-gradient(1000px 520px at 20% 0%, rgba(63,154,76,0.10), transparent 58%), radial-gradient(900px 500px at 85% 10%, rgba(122,79,42,0.08), transparent 55%), linear-gradient(180deg, var(--ag-bg), var(--ag-bg2));
+    color: var(--ag-text);
 }
 
 a {
-    color: var(--blue);
-    text-decoration: none;
+    color: var(--ag-green);
+    text-underline-offset: 3px;
 }
 
     a:hover {
-        text-decoration: underline;
+        color: var(--ag-green-2);
     }
 
-.container-xl {
+/* Constrain and add comfortable spacing */
+main, .container {
     max-width: 1100px;
-    margin: 0 auto;
-    padding: 24px;
 }
 
-.brandbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 16px 18px;
-    border-radius: var(--radius);
-    background: linear-gradient(90deg, var(--green-dark), var(--green));
-    color: white;
-    box-shadow: var(--shadow-sm);
+/* Headings */
+h1, h2, h3, h4, h5 {
+    color: var(--ag-text);
+    letter-spacing: 0.2px;
 }
 
-    .brandbar .title {
+h2 {
+    font-weight: 800;
+    margin-bottom: 0.75rem;
+}
+
+h4 {
+    font-weight: 750;
+    margin-top: 1.25rem;
+}
+
+/* Light HR */
+hr {
+    opacity: 0.14;
+}
+
+/* ---------- Card-style surfaces ---------- */
+
+/* Generic "card feel" for common blocks */
+.alert,
+.table,
+#mapWrap {
+    border-radius: var(--ag-radius);
+}
+
+/* Farm Map wrapper */
+#mapWrap {
+    background: var(--ag-card);
+    border: 1px solid var(--ag-border) !important;
+    box-shadow: var(--ag-shadow);
+}
+
+/* Basemap image: soften edges */
+#basemapImg {
+    border-radius: calc(var(--ag-radius) - 4px);
+}
+
+/* ---------- Crop list (your <ul><li> on public page) ---------- */
+
+ul {
+    margin-top: 0.75rem;
+}
+
+/* If you want ONLY the crop list on the farm page to look like cards,
+   keep this generic. If it impacts other pages too much, tell me and
+   I’ll scope it to a specific container. */
+ul {
+    list-style: none;
+    padding-left: 0;
+    background: rgba(255,255,255,0.72);
+    border: 1px solid var(--ag-border-soft);
+    border-radius: var(--ag-radius);
+    box-shadow: var(--ag-shadow-soft);
+    overflow: hidden;
+}
+
+    ul > li {
+        padding: 12px 14px;
+        border-bottom: 1px solid rgba(22,48,34,0.08);
         display: flex;
         align-items: center;
-        gap: 12px;
-        font-weight: 800;
-        letter-spacing: .2px;
+        flex-wrap: wrap;
+        gap: 8px;
     }
 
-    .brandbar img {
-        width: 44px;
-        height: 44px;
-        border-radius: 12px;
-        background: rgba(255,255,255,.12);
-        padding: 6px;
-    }
+        ul > li:last-child {
+            border-bottom: none;
+        }
 
-.card {
-    background: white;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow-sm);
-    padding: 18px;
+        ul > li strong {
+            font-weight: 800;
+        }
+
+.text-muted {
+    color: var(--ag-subtle) !important;
 }
 
-    .card + .card {
-        margin-top: 14px;
-    }
-
-.h1 {
-    font-size: 28px;
-    font-weight: 800;
-    margin: 0 0 12px;
-}
-
-.h2 {
-    font-size: 18px;
-    font-weight: 800;
-    margin: 0 0 10px;
-}
-
-.subtle {
-    color: var(--muted);
-}
-
-.grid {
-    display: grid;
-    gap: 14px;
-}
-
-    .grid.two {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .grid.three {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-
-@media (max-width: 900px) {
-    .grid.two, .grid.three {
-        grid-template-columns: 1fr;
-    }
-}
-
-.field label {
-    display: block;
-    font-weight: 700;
-    font-size: 13px;
-    margin: 0 0 6px;
-}
-
-.input, select, textarea {
-    width: 100%;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 10px 12px;
-    outline: none;
-    background: white;
-}
-
-    .input:focus, select:focus, textarea:focus {
-        border-color: rgba(45,156,219,.55);
-        box-shadow: 0 0 0 4px rgba(45,156,219,.15);
-    }
+/* ---------- Buttons (Bootstrap overrides) ---------- */
 
 .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    border: 0;
-    border-radius: 14px;
-    padding: 10px 14px;
-    font-weight: 800;
-    cursor: pointer;
+    border-radius: 999px;
+    padding: 7px 12px;
+    font-weight: 650;
+    letter-spacing: 0.15px;
 }
 
+/* Your “Email me when available” uses btn-outline-primary.
+   We remap that to orchard green / soil brown accents. */
+.btn-outline-primary {
+    border-color: rgba(47,125,59,0.55);
+    color: var(--ag-green);
+    background: transparent;
+}
+
+    .btn-outline-primary:hover {
+        background: var(--ag-green-soft);
+        border-color: rgba(47,125,59,0.75);
+        color: var(--ag-text);
+    }
+
+/* Optional: if you also use primary buttons elsewhere */
 .btn-primary {
-    background: var(--green);
-    color: white;
+    background: linear-gradient(180deg, var(--ag-green-2), var(--ag-green));
+    border-color: rgba(47,125,59,0.85);
 }
 
     .btn-primary:hover {
-        background: #196a32;
+        filter: brightness(1.03);
     }
 
-.btn-secondary {
-    background: rgba(45,156,219,.12);
-    color: var(--blue);
-    border: 1px solid rgba(45,156,219,.25);
+/* ---------- Alerts ---------- */
+
+.alert {
+    border: 1px solid var(--ag-border-soft);
+    box-shadow: var(--ag-shadow-soft);
 }
 
-    .btn-secondary:hover {
-        background: rgba(45,156,219,.18);
-    }
-
-.btn-soil {
-    background: rgba(122,74,31,.12);
-    color: var(--brown);
-    border: 1px solid rgba(122,74,31,.25);
+.alert-success {
+    background: rgba(47,125,59,0.10);
+    border-color: rgba(47,125,59,0.22);
+    color: var(--ag-text);
 }
 
-    .btn-soil:hover {
-        background: rgba(122,74,31,.18);
-    }
-
-.pill {
-    display: inline-flex;
-    align-items: center;
-    border-radius: 999px;
-    padding: 6px 10px;
-    font-weight: 800;
-    font-size: 12px;
-    border: 1px solid var(--border);
+.alert-danger {
+    background: rgba(182,58,43,0.10);
+    border-color: rgba(182,58,43,0.22);
+    color: var(--ag-text);
 }
 
-.pill-available {
-    background: rgba(31,122,58,.12);
-    border-color: rgba(31,122,58,.25);
-    color: var(--green-dark);
+.alert-info {
+    background: rgba(44,111,97,0.10);
+    border-color: rgba(44,111,97,0.22);
+    color: var(--ag-text);
 }
 
-.pill-not {
-    background: rgba(122,74,31,.12);
-    border-color: rgba(122,74,31,.25);
-    color: var(--brown);
+.alert-warning {
+    background: rgba(154,106,58,0.12);
+    border-color: rgba(154,106,58,0.24);
+    color: var(--ag-text);
 }
 
-.pill-highlight {
-    background: rgba(242,201,76,.25);
-    border-color: rgba(242,201,76,.55);
-    color: #6B5200;
-}
+/* ---------- Tables (if you have browse tables elsewhere) ---------- */
 
-.toast {
-    padding: 10px 12px;
-    border-radius: 14px;
-    border: 1px solid var(--border);
-    background: white;
-    box-shadow: var(--shadow-sm);
-}
-
-.toast-ok {
-    border-color: rgba(31,122,58,.25);
-    background: rgba(31,122,58,.08);
-}
-
-.toast-err {
-    border-color: rgba(211,47,47,.25);
-    background: rgba(211,47,47,.08);
-}
-.gridpainter-wrap {
-    position: relative;
-    width: 100%;
-    height: 70vh; /* you can change this */
-    min-height: 520px;
-    border-radius: 14px;
+.table {
+    background: rgba(255,255,255,0.82);
+    border: 1px solid var(--ag-border-soft);
+    box-shadow: var(--ag-shadow-soft);
     overflow: hidden;
-    border: 1px solid rgba(255,255,255,.15);
 }
 
-.map-layer {
-    position: absolute;
-    inset: 0;
-}
-
-.grid-layer {
-    position: absolute;
-    inset: 0;
-    display: grid;
-    grid-template-columns: repeat(var(--w), 1fr);
-    grid-template-rows: repeat(var(--h), 1fr);
-    gap: 1px;
-    background: rgba(0,0,0,.15); /* grid lines */
-    pointer-events: auto;
-}
-
-.cell-form {
-    margin: 0;
-    padding: 0;
-}
-
-.cell {
-    width: 100%;
-    height: 100%;
-    border: 0;
-    background: transparent;
-    cursor: pointer;
-    opacity: .85;
-}
-
-    .cell:hover {
-        outline: 2px solid rgba(255,255,255,.55);
-        outline-offset: -2px;
-        opacity: 1;
+    .table thead th {
+        background: rgba(47,125,59,0.08);
+        color: var(--ag-text);
+        border-bottom: 1px solid rgba(22,48,34,0.10);
+        font-weight: 750;
     }
+
+    .table tbody tr:hover {
+        background: rgba(122,79,42,0.06);
+    }
+
+/* ---------- Forms (small uplift if you have inputs) ---------- */
+
+.form-control, .form-select {
+    border-radius: 12px;
+    border-color: rgba(22,48,34,0.18);
+}
+
+    .form-control:focus, .form-select:focus {
+        border-color: rgba(47,125,59,0.55);
+        box-shadow: 0 0 0 0.2rem rgba(47,125,59,0.12);
+    }
+
+/* ---------- Utility spacing polish ---------- */
+
+.mb-2 > div {
+    margin-bottom: 4px;
+}
+
+/* Prevent overly tight wrapping on narrow screens */
+@media (max-width: 576px) {
+    ul > li {
+        padding: 12px 12px;
+    }
+
+    #mapWrap {
+        border-radius: 14px;
+    }
+
+    #basemapImg {
+        border-radius: 12px;
+    }
+}

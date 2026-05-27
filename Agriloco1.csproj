@@ -38,6 +38,10 @@
 	<ItemGroup>
 	  <Compile Remove="Controllers\CropSearchControllers.cs" />
 	  <Compile Remove="Dtos\CropSearchOut.cs" />
+	  <Compile Remove="Migrations\20260131165444_AddFarmMapLayout.cs" />
+	  <Compile Remove="Migrations\20260131165444_AddFarmMapLayout.Designer.cs" />
+	  <Compile Remove="Migrations\AgrilocoContextModelSnapshot.cs" />
+	  <Compile Remove="Services\CropBecameAvailableEvent.cs" />
 	</ItemGroup>
 	<ItemGroup>
 	  <None Remove="Agriloco1.zip" />

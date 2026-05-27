@@ -4,5 +4,6 @@
     {
         public string CanonicalCategory { get; set; } = "";
         public string Alias { get; set; } = "";
+        
     }
 }

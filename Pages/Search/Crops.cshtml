@@ -1,7 +1,38 @@
 ﻿@page
 @model agriloco.api.Pages.Search.CropsModel
+@using Agriloco.Api.Dtos
 @{
     ViewData["Title"] = "Search Crops";
+}
+
+@functions {
+    // Tries to read a name field if it exists on CropSearchOut (FarmName/FarmerName/MemberName),
+    // but does NOT require the DTO to have it yet. If not found, it falls back to "Farm #ID".
+    private string GetFarmDisplayName(CropSearchOut c)
+    {
+        if (c == null) return "Farm";
+
+        var t = c.GetType();
+
+        string? TryGetString(string propName)
+        {
+            var p = t.GetProperty(propName);
+            if (p == null) return null;
+            var v = p.GetValue(c);
+            return v as string;
+        }
+
+        var name =
+            TryGetString("FarmName") ??
+            TryGetString("FarmerName") ??
+            TryGetString("MemberName") ??
+            TryGetString("DisplayName");
+
+        if (!string.IsNullOrWhiteSpace(name))
+            return name.Trim();
+
+        return $"Farm #{c.FarmId}";
+    }
 }
 
 <h1>Search Crops</h1>
@@ -56,31 +87,116 @@
 
 @if (Model.Results.Any())
 {
-    <table border="1" cellpadding="4" cellspacing="0">
+    <table border="1" cellpadding="4" cellspacing="0" style="margin-bottom:14px;">
         <thead>
             <tr>
+                <th>Farm</th>
                 <th>Category</th>
                 <th>Variety</th>
                 <th>Availability</th>
                 <th>OfferingType</th>
-                <th>FarmId</th>
             </tr>
         </thead>
         <tbody>
             @foreach (var c in Model.Results)
             {
                 <tr>
+                    <td>
+                        <a href="/public/farm?id=@c.FarmId"
+                           style="font-weight:700;text-decoration:none;color:#0d6efd;">
+                            @GetFarmDisplayName(c)
+                        </a>
+                    </td>
                     <td>@c.Category</td>
                     <td>@c.Variety</td>
                     <td>@c.Availability</td>
                     <td>@c.OfferingType</td>
-                    <td>@c.FarmId</td>
                 </tr>
             }
         </tbody>
     </table>
+
+    <!-- ✅ NEW: Map shows farms from search results (if they have lat/lng) -->
+    <div style="margin-top:10px;">
+        <h3 style="margin: 0 0 8px 0;">Map of Results</h3>
+        <div id="resultsMap" style="width:100%;max-width:1100px;height:420px;border:1px solid #ddd;border-radius:12px;overflow:hidden;"></div>
+
+        @if (Model.MapPoints == null || Model.MapPoints.Count == 0)
+        {
+            <div class="text-muted" style="margin-top:8px;">
+                No geolocation data found on results yet. (Once farms have Lat/Lng stored, markers will appear here.)
+            </div>
+        }
+    </div>
 }
 else
 {
     <p>No results.</p>
+}
+
+@section Scripts {
+    <!-- Leaflet LOCAL (recommended) -->
+    <link rel="stylesheet" href="/lib/leaflet/leaflet.css" />
+    <script src="/lib/leaflet/leaflet.js"></script>
+
+    <script>
+        (function () {
+            const mapEl = document.getElementById("resultsMap");
+            if (!mapEl) return;
+
+            // farmIds from results
+            const farmIds = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                            Model.Results.Select(r => r.FarmId).Distinct().ToList()
+                    ));
+
+        // Default view (Toronto-ish)
+        const map = L.map("resultsMap", { scrollWheelZoom: false }).setView([43.6532, -79.3832], 7);
+
+            L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+                maxZoom: 19,
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+
+            if (!farmIds || farmIds.length === 0) return;
+
+            const bounds = [];
+
+            async function loadFarm(farmId) {
+                const resp = await fetch(`/api/farms/${farmId}/public_single`);
+                if (!resp.ok) return null;
+                return await resp.json();
+            }
+
+            (async function () {
+                // show a simple status if you want (optional)
+                // console.log("Loading farm locations...");
+
+                const farms = await Promise.all(farmIds.map(loadFarm));
+
+                for (const f of farms) {
+                    if (!f) continue;
+
+                    const lat = f.latitude;
+                    const lng = f.longitude;
+
+                    if (typeof lat !== "number" || typeof lng !== "number") continue;
+                    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) continue;
+
+                    const name = f.name || (`Farm #${f.id}`);
+                    const addr = f.address ? `<br><small>${f.address}</small>` : "";
+
+                    const m = L.marker([lat, lng]).addTo(map);
+                    m.bindPopup(`${name}${addr}`);
+
+                    bounds.push([lat, lng]);
+                }
+
+                if (bounds.length === 1) {
+                    map.setView(bounds[0], 11);
+                } else if (bounds.length > 1) {
+                    map.fitBounds(bounds, { padding: [30, 30] });
+                }
+            })();
+        })();
+    </script>
 }

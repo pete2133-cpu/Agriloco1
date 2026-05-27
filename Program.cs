@@ -1,9 +1,13 @@
 ﻿using Agriloco.Api.Data;
+using Agriloco.Api.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
-
+builder.Configuration
+    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
+    .AddEnvironmentVariables();
 // Controllers + Razor Pages
 builder.Services.AddControllers();
 builder.Services.AddRazorPages();
@@ -18,13 +22,23 @@ builder.Services.AddDbContext<AgrilocoContext>(options =>
     options.UseSqlite(cs);
 });
 
-// ✅ Add HttpClient for Razor Pages to call your own API
+// HttpClient for Razor Pages to call your own API
 builder.Services.AddHttpClient("AgrilocoApiClient", client =>
 {
-    // This should match your running site URL (launchSettings.json)
     client.BaseAddress = new Uri("http://localhost:5227/");
 });
 
+// =======================================================
+// ✅ ALERTS / EMAIL
+// =======================================================
+builder.Services.AddSingleton<IFarmAvailabilityAlertQueue, FarmAvailabilityAlertQueue>();
+
+// ✅ IMPORTANT: REAL EMAIL SENDER (NOT DEBUG)
+builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
+
+
+
+builder.Services.AddHostedService<FarmAvailabilityAlertWorker>();
 // Swagger/OpenAPI
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -42,9 +56,7 @@ if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
 
-    // Swagger
     app.UseSwagger();
-
     app.UseSwaggerUI(c =>
     {
         c.RoutePrefix = "swagger";
@@ -56,24 +68,46 @@ app.UseStaticFiles();
 app.UseRouting();
 app.UseAuthorization();
 
-// DB create + schema patch (for OfferingType)
+// =======================================================
+// DB BOOTSTRAP
+// ONE-TIME RESET ENABLED
+// =======================================================
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AgrilocoContext>();
 
-    // ONE-TIME RESET (uncomment, run once, then comment again):
-    // db.Database.EnsureDeleted();
+    
 
+    // ✅ Create tables from current Models (no migrations needed)
     db.Database.EnsureCreated();
 
-    // ✅ One-time schema patch for existing SQLite DBs (safe if already exists)
+    // ✅ One-time schema patch for FarmMapLayouts table (safe if already exists)
+    try
+    {
+        db.Database.ExecuteSqlRaw(@"
+        CREATE TABLE IF NOT EXISTS FarmMapLayouts (
+            Id INTEGER NOT NULL CONSTRAINT PK_FarmMapLayouts PRIMARY KEY AUTOINCREMENT,
+            FarmId INTEGER NOT NULL,
+            Json TEXT NOT NULL,
+            UpdatedAt TEXT NOT NULL,
+            CONSTRAINT UQ_FarmMapLayouts_FarmId UNIQUE (FarmId),
+            CONSTRAINT FK_FarmMapLayouts_Farms_FarmId FOREIGN KEY (FarmId) REFERENCES Farms (Id) ON DELETE CASCADE
+        );
+    ");
+    }
+    catch
+    {
+        // ignore
+    }
+
+    // ✅ Legacy patch: OfferingType column (safe to keep for now)
     try
     {
         db.Database.ExecuteSqlRaw("ALTER TABLE Crops ADD COLUMN OfferingType TEXT;");
     }
     catch
     {
-        // ignore (likely already exists)
+        // ignore
     }
 }
 
