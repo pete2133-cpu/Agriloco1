@@ -1,0 +1,102 @@
+﻿@page
+@model Agriloco1.Pages.Farmer.Inventory.HarvestLotsModel
+
+<h1>Harvest Lots</h1>
+
+<p>Create a simple harvest lot, then add details later.</p>
+
+<form method="get" style="margin-bottom:20px;">
+    <input type="text" name="SearchTerm" value="@Model.SearchTerm" placeholder="Search crop, variety, lot, status..." />
+    <button type="submit">Search</button>
+    <a href="/Farmer/Inventory/HarvestLots">Clear</a>
+</form>
+
+<h2>New Harvest Lot</h2>
+
+<form method="post" asp-page-handler="Create" style="margin-bottom:30px;">
+    <div>
+        <label>Crop</label><br />
+        <input asp-for="NewHarvest.CropName" placeholder="Corn, Apples, Strawberries..." required />
+    </div>
+
+    <div>
+        <label>Variety</label><br />
+        <input asp-for="NewHarvest.VarietyName" placeholder="Honeycrisp, Albion, Music..." />
+    </div>
+
+    <div>
+        <label>Quantity</label><br />
+        <input asp-for="NewHarvest.Quantity" type="number" step="0.01" required />
+    </div>
+
+    <div>
+        <label>Unit</label><br />
+        <select asp-for="NewHarvest.Unit">
+            <option value="lbs">lbs</option>
+            <option value="kg">kg</option>
+            <option value="bushels">bushels</option>
+            <option value="bins">bins</option>
+            <option value="flats">flats</option>
+            <option value="pails">pails</option>
+            <option value="units">units</option>
+        </select>
+    </div>
+
+    <div>
+        <label>Harvest Date</label><br />
+        <input asp-for="NewHarvest.HarvestDate" type="date" required />
+    </div>
+
+    <br />
+    <button type="submit">Create Harvest Lot</button>
+</form>
+
+<h2>Harvest Lot List</h2>
+
+<table border="1" cellpadding="8" cellspacing="0" style="width:100%; border-collapse:collapse;">
+    <thead>
+        <tr>
+            <th>Lot #</th>
+            <th>Crop</th>
+            <th>Variety</th>
+            <th>Quantity</th>
+            <th>Date</th>
+            <th>Status</th>
+            <th>Photos</th>
+            <th>Location</th>
+            <th>Details</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (!Model.HarvestLots.Any())
+        {
+            <tr>
+                <td colspan="9">No harvest lots found.</td>
+            </tr>
+        }
+        else
+        {
+            @foreach (var lot in Model.HarvestLots)
+            {
+                <tr>
+                    <td>@lot.LotNumber</td>
+                    <td>@lot.CropName</td>
+                    <td>@(string.IsNullOrWhiteSpace(lot.VarietyName) ? "-" : lot.VarietyName)</td>
+                    <td>@lot.Quantity @lot.Unit</td>
+                    <td>@lot.HarvestDate.ToString("yyyy-MM-dd")</td>
+                    <td>@lot.Status</td>
+                    <td>@lot.PhotoCount</td>
+                    <td>@lot.LocationLabel</td>
+                    <td>
+                        <form method="post" asp-page-handler="ToggleStatus" style="display:inline;">
+                            <input type="hidden" name="id" value="@lot.Id" />
+                            <button type="submit">Toggle Status</button>
+                        </form>
+
+                        <a href="/Farmer/Inventory/HarvestLotDetails?id=@lot.Id" style="margin-left:8px;">Add +</a>
+                    </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>

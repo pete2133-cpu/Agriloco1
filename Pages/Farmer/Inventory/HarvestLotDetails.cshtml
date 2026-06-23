@@ -1,0 +1,114 @@
+﻿@page
+@model Agriloco1.Pages.Farmer.Inventory.HarvestLotDetailsModel
+
+<h1>Harvest Lot Details</h1>
+
+<p>
+    <a href="/Farmer/Inventory/HarvestLots">← Back to Harvest Lots</a>
+</p>
+
+<hr />
+
+<div>
+    <label><strong>Lot Number</strong></label><br />
+    <input value="@Model.LotNumber" readonly style="width:300px;" />
+</div>
+
+<br />
+
+<div>
+    <label>Crop</label><br />
+    <input asp-for="CropName" style="width:300px;" />
+</div>
+
+<br />
+
+<div>
+    <label>Variety</label><br />
+    <input asp-for="VarietyName" style="width:300px;" />
+</div>
+
+<br />
+
+<div>
+    <label>Quantity</label><br />
+    <input asp-for="Quantity" style="width:300px;" />
+</div>
+
+<br />
+
+<div>
+    <label>Unit</label><br />
+    <select asp-for="Unit" style="width:300px;">
+        <option>lbs</option>
+        <option>kg</option>
+        <option>bushels</option>
+        <option>bins</option>
+        <option>flats</option>
+        <option>pails</option>
+        <option>units</option>
+    </select>
+</div>
+
+<br />
+
+<div>
+    <label>Date</label><br />
+    <input asp-for="HarvestDate" type="date" style="width:300px;" />
+</div>
+
+<br />
+
+<div>
+    <label>Status</label><br />
+    <select asp-for="Status" style="width:300px;">
+        <option>Private</option>
+        <option>Available</option>
+        <option>Reserved</option>
+        <option>Sold</option>
+    </select>
+</div>
+
+<br />
+
+<div>
+    <label>Notes</label><br />
+    <textarea asp-for="Notes" rows="4" style="width:600px;"></textarea>
+</div>
+
+<br />
+
+<div>
+    <label>Location</label><br />
+    <input asp-for="Location" style="width:400px;" />
+</div>
+
+<br />
+
+<div>
+    <label>Workers</label><br />
+    <input asp-for="Workers" style="width:400px;" />
+</div>
+
+<br />
+
+<div>
+    <label>Condition</label><br />
+    <select asp-for="Condition" style="width:300px;">
+        <option>Excellent</option>
+        <option>Good</option>
+        <option>Average</option>
+        <option>Poor</option>
+    </select>
+</div>
+
+<br />
+
+<div>
+    <label>Photos</label><br />
+    <input type="file" />
+</div>
+
+<br />
+
+<button type="submit">Save Details</button>
