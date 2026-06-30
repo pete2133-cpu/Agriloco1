@@ -1,0 +1,209 @@
+﻿@page
+@model Agriloco1.Pages.Farmer.Inventory.InventoryItemDetailsModel
+
+<h1>Inventory Item Details</h1>
+
+<p>
+    <a href="/Farmer/Inventory/InventoryItems?farmId=@Model.FarmId">← Back to Inventory Items</a>
+</p>
+
+<form method="post" asp-page-handler="SaveItem">
+    <input type="hidden" asp-for="InventoryItem.Id" />
+    <input type="hidden" asp-for="FarmId" />
+
+    <h2>Item Family</h2>
+
+    <div>
+        <label><strong>Item Name</strong></label><br />
+        <input asp-for="InventoryItem.ItemName" placeholder="Apple Cider Vinegar, Strawberries, Sugar..." style="width:350px;" />
+    </div>
+
+    <br />
+
+    <div>
+        <label>Category</label><br />
+        <select asp-for="InventoryItem.ItemCategory" style="width:350px;">
+            <option value="Ingredient">Ingredient</option>
+            <option value="Packaging">Packaging</option>
+            <option value="Raw Produce">Raw Produce</option>
+            <option value="Prepared Ingredient">Prepared Ingredient</option>
+            <option value="Finished Product">Finished Product</option>
+            <option value="Other">Other</option>
+        </select>
+    </div>
+
+    <br />
+
+    <div>
+        <label>Default End Measure Unit</label><br />
+        <select asp-for="InventoryItem.BaseUnit" style="width:350px;">
+            <option value="units">units</option>
+            <option value="kg">kg</option>
+            <option value="lbs">lbs</option>
+            <option value="L">L</option>
+            <option value="mL">mL</option>
+            <option value="oz">oz</option>
+            <option value="jars">jars</option>
+        </select>
+        <br />
+        <small>Example: vinegar usually tracks as L, strawberries as kg, jars as units.</small>
+    </div>
+
+    <br />
+
+    <div>
+        <label>Item Notes</label><br />
+        <textarea asp-for="InventoryItem.Notes" rows="3" style="width:600px;"></textarea>
+    </div>
+
+    <br />
+
+    <div>
+        <label>Active</label><br />
+        <select asp-for="InventoryItem.IsActive" style="width:200px;">
+            <option value="true">Yes</option>
+            <option value="false">No</option>
+        </select>
+    </div>
+
+    <br />
+
+    <button type="submit">Save Item Family</button>
+</form>
+
+<hr />
+
+<h2>Item Variations</h2>
+
+<p>
+    Define every way this item can arrive. Receiving will later select one of these variations, enter the number of units, and the system will calculate total usable inventory.
+</p>
+
+<form method="post" asp-page-handler="AddPackage" style="margin-bottom:25px;">
+    <input type="hidden" asp-for="InventoryItem.Id" />
+    <input type="hidden" asp-for="FarmId" />
+
+    <div>
+        <label>Variation Name</label><br />
+        <input asp-for="NewPackage.PackageName" placeholder="2L Jug, 4L Jug, Flat, Bin, Case..." required />
+    </div>
+
+    <div>
+        <label>Package Type</label><br />
+        <select asp-for="NewPackage.PackageType">
+            <option value="Jug">Jug</option>
+            <option value="Flat">Flat</option>
+            <option value="Bin">Bin</option>
+            <option value="Pail">Pail</option>
+            <option value="Box">Box</option>
+            <option value="Case">Case</option>
+            <option value="Bag">Bag</option>
+            <option value="Bottle">Bottle</option>
+            <option value="Jar">Jar</option>
+            <option value="Loose">Loose</option>
+            <option value="Other">Other</option>
+        </select>
+    </div>
+
+    <div>
+        <label>End Usable Amount Per Unit</label><br />
+        <input asp-for="NewPackage.PackageQuantity" type="number" step="0.01" required />
+    </div>
+
+    <div>
+        <label>End Measure Unit</label><br />
+        <select asp-for="NewPackage.PackageUnit">
+            <option value="units">units</option>
+            <option value="kg">kg</option>
+            <option value="lbs">lbs</option>
+            <option value="L">L</option>
+            <option value="mL">mL</option>
+            <option value="oz">oz</option>
+            <option value="jars">jars</option>
+        </select>
+    </div>
+
+    <div>
+        <label>Default Location</label><br />
+        <input asp-for="NewPackage.StorageLocation" placeholder="Cooler 1, Freezer, Dry Storage..." style="width:350px;" />
+    </div>
+
+    <div>
+        <label>Barcode</label><br />
+        <input asp-for="NewPackage.BarcodeValue" placeholder="UPC, QR, supplier barcode..." style="width:350px;" />
+    </div>
+
+    <div>
+        <label>Shelf Life</label><br />
+        <input asp-for="NewPackage.ShelfLife" placeholder="2 days, 6 months, 1 year..." style="width:350px;" />
+    </div>
+
+    <div>
+        <label>Notes</label><br />
+        <input asp-for="NewPackage.Notes" placeholder="Optional notes..." style="width:500px;" />
+    </div>
+
+    <br />
+
+    <button type="submit">Add Variation</button>
+</form>
+
+<h3>Saved Variations</h3>
+
+<table border="1" cellpadding="8" cellspacing="0" style="width:100%; border-collapse:collapse;">
+    <thead>
+        <tr>
+            <th>Variation</th>
+            <th>Package Type</th>
+            <th>End Amount Per Unit</th>
+            <th>End Unit</th>
+            <th>Location</th>
+            <th>Barcode</th>
+            <th>Shelf Life</th>
+            <th>Status</th>
+            <th>Receiving Example</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (!Model.Packages.Any())
+        {
+            <tr>
+                <td colspan="10">No variations saved for this item.</td>
+            </tr>
+        }
+        else
+        {
+            @foreach (var package in Model.Packages)
+            {
+                <tr>
+                    <td>@package.PackageName</td>
+                    <td>@(string.IsNullOrWhiteSpace(package.PackageType) ? "-" : package.PackageType)</td>
+                    <td>@package.PackageQuantity</td>
+                    <td>@package.PackageUnit</td>
+                    <td>@(string.IsNullOrWhiteSpace(package.StorageLocation) ? "-" : package.StorageLocation)</td>
+                    <td>@(string.IsNullOrWhiteSpace(package.BarcodeValue) ? "-" : package.BarcodeValue)</td>
+                    <td>@(string.IsNullOrWhiteSpace(package.ShelfLife) ? "-" : package.ShelfLife)</td>
+                    <td>@(package.IsActive ? "Active" : "Inactive")</td>
+                    <td>7 × @package.PackageName = @(7 * package.PackageQuantity) @package.PackageUnit</td>
+                    <td>
+                        <form method="post" asp-page-handler="TogglePackage" style="display:inline;">
+                            <input type="hidden" name="packageId" value="@package.Id" />
+                            <input type="hidden" name="itemId" value="@Model.InventoryItem.Id" />
+                            <input type="hidden" name="farmId" value="@Model.FarmId" />
+                            <button type="submit">Toggle</button>
+                        </form>
+
+                        <form method="post" asp-page-handler="DeletePackage" style="display:inline; margin-left:8px;"
+                              onsubmit="return confirm('Delete this variation?');">
+                            <input type="hidden" name="packageId" value="@package.Id" />
+                            <input type="hidden" name="itemId" value="@Model.InventoryItem.Id" />
+                            <input type="hidden" name="farmId" value="@Model.FarmId" />
+                            <button type="submit">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>

@@ -1,0 +1,97 @@
+﻿@page
+@model Agriloco1.Pages.Farmer.Inventory.SuppliersModel
+
+<h1>Suppliers</h1>
+
+<p>These are private supplier names for this farm/business. You can optionally link a supplier to a real Agriloco Farm ID later.</p>
+
+<p><strong>Current Farm ID:</strong> @Model.FarmId</p>
+
+<form method="get" style="margin-bottom:20px;">
+    <input type="hidden" name="FarmId" value="@Model.FarmId" />
+    <input type="text" name="SearchTerm" value="@Model.SearchTerm" placeholder="Search supplier, type, contact..." />
+    <button type="submit">Search</button>
+    <a href="/Farmer/Inventory/Suppliers?farmId=@Model.FarmId">Clear</a>
+</form>
+
+<h2>New Supplier</h2>
+
+<form method="post" asp-page-handler="Create" style="margin-bottom:30px;">
+    <input type="hidden" asp-for="FarmId" />
+
+    <div>
+        <label>Supplier Name</label><br />
+        <input asp-for="NewSupplier.SupplierName" placeholder="Bert, Costco, Smith Farms..." required />
+    </div>
+
+    <div>
+        <label>Supplier Type</label><br />
+        <select asp-for="NewSupplier.SupplierType">
+            <option value="Farm">Farm</option>
+            <option value="Distributor">Distributor</option>
+            <option value="Retail Store">Retail Store</option>
+            <option value="Manufacturer">Manufacturer</option>
+            <option value="Other">Other</option>
+        </select>
+    </div>
+
+    <div>
+        <label>Optional Linked Agriloco Farm ID</label><br />
+        <input asp-for="NewSupplier.LinkedFarmId" type="number" placeholder="Leave blank if not an Agriloco farm" />
+    </div>
+
+    <br />
+    <button type="submit">Create Supplier</button>
+</form>
+
+<h2>Supplier List</h2>
+
+<table border="1" cellpadding="8" cellspacing="0" style="width:100%; border-collapse:collapse;">
+    <thead>
+        <tr>
+            <th>Supplier</th>
+            <th>Type</th>
+            <th>Linked Farm ID</th>
+            <th>Contact</th>
+            <th>Active</th>
+            <th>Details</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (!Model.Suppliers.Any())
+        {
+            <tr>
+                <td colspan="6">No suppliers found.</td>
+            </tr>
+        }
+        else
+        {
+            @foreach (var supplier in Model.Suppliers)
+            {
+                <tr>
+                    <td>@supplier.SupplierName</td>
+                    <td>@supplier.SupplierType</td>
+                    <td>@(supplier.LinkedFarmId.HasValue ? supplier.LinkedFarmId.ToString() : "-")</td>
+                    <td>@(string.IsNullOrWhiteSpace(supplier.ContactName) ? "-" : supplier.ContactName)</td>
+                    <td>@(supplier.IsActive ? "Yes" : "No")</td>
+                    <td>
+                        <form method="post" asp-page-handler="ToggleActive" style="display:inline;">
+                            <input type="hidden" name="id" value="@supplier.Id" />
+                            <input type="hidden" name="farmId" value="@Model.FarmId" />
+                            <button type="submit">Toggle Active</button>
+                        </form>
+
+                        <a href="/Farmer/Inventory/SupplierDetails?id=@supplier.Id&farmId=@Model.FarmId" style="margin-left:8px;">Add +</a>
+
+                        <form method="post" asp-page-handler="Delete" style="display:inline; margin-left:8px;"
+                              onsubmit="return confirm('Delete this supplier? This cannot be undone.');">
+                            <input type="hidden" name="id" value="@supplier.Id" />
+                            <input type="hidden" name="farmId" value="@Model.FarmId" />
+                            <button type="submit">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>

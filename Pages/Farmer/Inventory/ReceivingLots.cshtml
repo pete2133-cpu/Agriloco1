@@ -1,0 +1,113 @@
+﻿@page
+@model Agriloco1.Pages.Farmer.Inventory.ReceivingLotsModel
+
+<h1>Receiving Lots</h1>
+
+<p>Record inventory coming into the business.</p>
+
+<p><strong>Current Farm ID:</strong> @Model.FarmId</p>
+
+<form method="get" style="margin-bottom:20px;">
+    <input type="hidden" name="FarmId" value="@Model.FarmId" />
+    <input type="text" name="SearchTerm" value="@Model.SearchTerm" placeholder="Search lot, supplier, item, variation, status..." />
+    <button type="submit">Search</button>
+    <a href="/Farmer/Inventory/ReceivingLots?farmId=@Model.FarmId">Clear</a>
+</form>
+
+<h2>New Receiving Lot</h2>
+
+<form method="post" asp-page-handler="Create" style="margin-bottom:30px;">
+    <input type="hidden" asp-for="FarmId" />
+
+    <div>
+        <label>Received Date</label><br />
+        <input asp-for="NewReceiving.ReceivedDate" type="date" required />
+    </div>
+
+    <div>
+        <label>Supplier</label><br />
+        <select asp-for="NewReceiving.SupplierId" required>
+            <option value="">-- Select supplier --</option>
+            @foreach (var supplier in Model.SupplierOptions)
+            {
+                <option value="@supplier.Id">@supplier.Name</option>
+            }
+        </select>
+    </div>
+
+    <div>
+        <label>Item / Variation</label><br />
+        <select asp-for="NewReceiving.InventoryItemPackageId" required>
+            <option value="">-- Select item variation --</option>
+            @foreach (var variation in Model.ItemVariationOptions)
+            {
+                <option value="@variation.PackageId">@variation.DisplayName</option>
+            }
+        </select>
+    </div>
+
+    <div>
+        <label>Number of Units Received</label><br />
+        <input asp-for="NewReceiving.UnitsReceived" type="number" step="0.01" required />
+    </div>
+
+    <br />
+
+    <button type="submit">Create Receiving Lot</button>
+</form>
+
+<h2>Received Inventory</h2>
+
+<table border="1" cellpadding="8" cellspacing="0" style="width:100%; border-collapse:collapse;">
+    <thead>
+        <tr>
+            <th>Lot #</th>
+            <th>Date</th>
+            <th>Supplier</th>
+            <th>Item</th>
+            <th>Variation</th>
+            <th>Units Received</th>
+            <th>Usable Per Unit</th>
+            <th>Total Usable</th>
+            <th>Location</th>
+            <th>Status</th>
+            <th>Details</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (!Model.ReceivingLots.Any())
+        {
+            <tr>
+                <td colspan="11">No receiving lots found.</td>
+            </tr>
+        }
+        else
+        {
+            @foreach (var lot in Model.ReceivingLots)
+            {
+                <tr>
+                    <td>@lot.LotNumber</td>
+                    <td>@lot.ReceivedDate.ToString("yyyy-MM-dd")</td>
+                    <td>@lot.SupplierName</td>
+                    <td>@lot.InventoryItemName</td>
+                    <td>@lot.VariationName</td>
+                    <td>@lot.UnitsReceived</td>
+                    <td>@lot.UsableQuantityPerUnit @lot.UsableUnit</td>
+                    <td><strong>@lot.TotalUsableQuantity @lot.UsableUnit</strong></td>
+                    <td>@(string.IsNullOrWhiteSpace(lot.StorageLocation) ? "-" : lot.StorageLocation)</td>
+                    <td>@lot.Status</td>
+                    <td>
+                        <a href="/Farmer/Inventory/ReceivingLotDetails?id=@lot.Id&farmId=@Model.FarmId">Add +</a>
+
+                        <form method="post" asp-page-handler="Delete" style="display:inline; margin-left:8px;"
+                              onsubmit="return confirm('Delete this receiving lot?');">
+                            <input type="hidden" name="id" value="@lot.Id" />
+                            <input type="hidden" name="farmId" value="@Model.FarmId" />
+                            <button type="submit">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>

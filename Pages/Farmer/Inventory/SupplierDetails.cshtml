@@ -1,0 +1,88 @@
+﻿@page
+@model Agriloco1.Pages.Farmer.Inventory.SupplierDetailsModel
+
+<h1>Supplier Details</h1>
+
+<p>
+    <a href="/Farmer/Inventory/Suppliers?farmId=@Model.FarmId">← Back to Suppliers</a>
+</p>
+
+<form method="post">
+    <input type="hidden" asp-for="Supplier.Id" />
+    <input type="hidden" asp-for="FarmId" />
+
+    <div>
+        <label><strong>Supplier Name</strong></label><br />
+        <input asp-for="Supplier.SupplierName" style="width:350px;" />
+    </div>
+
+    <br />
+
+    <div>
+        <label>Supplier Type</label><br />
+        <select asp-for="Supplier.SupplierType" style="width:350px;">
+            <option value="Farm">Farm</option>
+            <option value="Distributor">Distributor</option>
+            <option value="Retail Store">Retail Store</option>
+            <option value="Manufacturer">Manufacturer</option>
+            <option value="Other">Other</option>
+        </select>
+    </div>
+
+    <br />
+
+    <div>
+        <label>Linked Agriloco Farm ID</label><br />
+        <input asp-for="Supplier.LinkedFarmId" type="number" style="width:350px;" />
+        <small>Optional. Use this only when this supplier is also an Agriloco farm.</small>
+    </div>
+
+    <br />
+
+    <div>
+        <label>Contact Name</label><br />
+        <input asp-for="Supplier.ContactName" style="width:350px;" />
+    </div>
+
+    <br />
+
+    <div>
+        <label>Phone</label><br />
+        <input asp-for="Supplier.Phone" style="width:350px;" />
+    </div>
+
+    <br />
+
+    <div>
+        <label>Email</label><br />
+        <input asp-for="Supplier.Email" type="email" style="width:350px;" />
+    </div>
+
+    <br />
+
+    <div>
+        <label>Address</label><br />
+        <textarea asp-for="Supplier.Address" rows="3" style="width:600px;"></textarea>
+    </div>
+
+    <br />
+
+    <div>
+        <label>Notes</label><br />
+        <textarea asp-for="Supplier.Notes" rows="4" style="width:600px;"></textarea>
+    </div>
+
+    <br />
+
+    <div>
+        <label>Active</label><br />
+        <select asp-for="Supplier.IsActive" style="width:200px;">
+            <option value="true">Yes</option>
+            <option value="false">No</option>
+        </select>
+    </div>
+
+    <br />
+
+    <button type="submit">Save Supplier Details</button>
+</form>
