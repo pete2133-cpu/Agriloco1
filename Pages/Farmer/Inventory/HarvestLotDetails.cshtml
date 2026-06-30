@@ -7,108 +7,111 @@
     <a href="/Farmer/Inventory/HarvestLots">← Back to Harvest Lots</a>
 </p>
 
-<hr />
+<form method="post">
+    <input type="hidden" asp-for="HarvestLot.Id" />
 
-<div>
-    <label><strong>Lot Number</strong></label><br />
-    <input value="@Model.LotNumber" readonly style="width:300px;" />
-</div>
+    <div>
+        <label><strong>Lot Number</strong></label><br />
+        <input asp-for="HarvestLot.LotNumber" readonly style="width:300px;" />
+    </div>
 
-<br />
+    <br />
 
-<div>
-    <label>Crop</label><br />
-    <input asp-for="CropName" style="width:300px;" />
-</div>
+    <div>
+        <label>Crop</label><br />
+        <input asp-for="HarvestLot.CropName" style="width:300px;" />
+    </div>
 
-<br />
+    <br />
 
-<div>
-    <label>Variety</label><br />
-    <input asp-for="VarietyName" style="width:300px;" />
-</div>
+    <div>
+        <label>Variety</label><br />
+        <input asp-for="HarvestLot.VarietyName" style="width:300px;" />
+    </div>
 
-<br />
+    <br />
 
-<div>
-    <label>Quantity</label><br />
-    <input asp-for="Quantity" style="width:300px;" />
-</div>
+    <div>
+        <label>Quantity</label><br />
+        <input asp-for="HarvestLot.Quantity" type="number" step="0.01" style="width:300px;" />
+    </div>
 
-<br />
+    <br />
 
-<div>
-    <label>Unit</label><br />
-    <select asp-for="Unit" style="width:300px;">
-        <option>lbs</option>
-        <option>kg</option>
-        <option>bushels</option>
-        <option>bins</option>
-        <option>flats</option>
-        <option>pails</option>
-        <option>units</option>
-    </select>
-</div>
+    <div>
+        <label>Unit</label><br />
+        <select asp-for="HarvestLot.Unit" style="width:300px;">
+            <option value="lbs">lbs</option>
+            <option value="kg">kg</option>
+            <option value="bushels">bushels</option>
+            <option value="bins">bins</option>
+            <option value="flats">flats</option>
+            <option value="pails">pails</option>
+            <option value="units">units</option>
+        </select>
+    </div>
 
-<br />
+    <br />
 
-<div>
-    <label>Date</label><br />
-    <input asp-for="HarvestDate" type="date" style="width:300px;" />
-</div>
+    <div>
+        <label>Date</label><br />
+        <input asp-for="HarvestLot.HarvestDate" type="date" style="width:300px;" />
+    </div>
 
-<br />
+    <br />
 
-<div>
-    <label>Status</label><br />
-    <select asp-for="Status" style="width:300px;">
-        <option>Private</option>
-        <option>Available</option>
-        <option>Reserved</option>
-        <option>Sold</option>
-    </select>
-</div>
+    <div>
+        <label>Status</label><br />
+        <select asp-for="HarvestLot.Status" style="width:300px;">
+            <option value="Private">Private</option>
+            <option value="Available">Available</option>
+            <option value="Reserved">Reserved</option>
+            <option value="Sold">Sold</option>
+        </select>
+    </div>
 
-<br />
+    <br />
 
-<div>
-    <label>Notes</label><br />
-    <textarea asp-for="Notes" rows="4" style="width:600px;"></textarea>
-</div>
+    <div>
+        <label>Notes</label><br />
+        <textarea asp-for="HarvestLot.Notes" rows="4" style="width:600px;"></textarea>
+    </div>
 
-<br />
+    <br />
 
-<div>
-    <label>Location</label><br />
-    <input asp-for="Location" style="width:400px;" />
-</div>
+    <div>
+        <label>Location</label><br />
+        <input asp-for="HarvestLot.Location" style="width:400px;" />
+    </div>
 
-<br />
+    <br />
 
-<div>
-    <label>Workers</label><br />
-    <input asp-for="Workers" style="width:400px;" />
-</div>
+    <div>
+        <label>Workers</label><br />
+        <input asp-for="HarvestLot.Workers" style="width:400px;" />
+    </div>
 
-<br />
+    <br />
 
-<div>
-    <label>Condition</label><br />
-    <select asp-for="Condition" style="width:300px;">
-        <option>Excellent</option>
-        <option>Good</option>
-        <option>Average</option>
-        <option>Poor</option>
-    </select>
-</div>
+    <div>
+        <label>Condition</label><br />
+        <select asp-for="HarvestLot.Condition" style="width:300px;">
+            <option value="Excellent">Excellent</option>
+            <option value="Good">Good</option>
+            <option value="Average">Average</option>
+            <option value="Poor">Poor</option>
+        </select>
+    </div>
 
-<br />
+    <br />
 
-<div>
-    <label>Photos</label><br />
-    <input type="file" />
-</div>
+    <div>
+        <label>Photos</label><br />
+        <input type="file" disabled />
+        <small>Photo upload will be added later.</small>
+    </div>
 
-<br />
+    <br />
 
-<button type="submit">Save Details</button>
+    <button type="submit">Save Details</button>
+</form>

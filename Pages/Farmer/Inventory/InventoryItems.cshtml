@@ -1,0 +1,114 @@
+﻿@page
+@model Agriloco1.Pages.Farmer.Inventory.InventoryItemsModel
+
+<h1>Inventory Items</h1>
+
+<p>Master list of items and saved receivable variations.</p>
+
+<p><strong>Current Farm ID:</strong> @Model.FarmId</p>
+
+<form method="get" style="margin-bottom:20px;">
+    <input type="hidden" name="FarmId" value="@Model.FarmId" />
+    <input type="text" name="SearchTerm" value="@Model.SearchTerm" placeholder="Search item, variation, category, unit, barcode, location..." />
+    <button type="submit">Search</button>
+    <a href="/Farmer/Inventory/InventoryItems?farmId=@Model.FarmId">Clear</a>
+</form>
+
+<h2>New Inventory Item</h2>
+
+<form method="post" asp-page-handler="Create" style="margin-bottom:30px;">
+    <input type="hidden" asp-for="FarmId" />
+
+    <div>
+        <label>Item Name</label><br />
+        <input asp-for="NewItem.ItemName" placeholder="Strawberries, Vinegar, Sugar, 500ml Jar..." required />
+    </div>
+
+    <div>
+        <label>Category</label><br />
+        <select asp-for="NewItem.ItemCategory">
+            <option value="Ingredient">Ingredient</option>
+            <option value="Packaging">Packaging</option>
+            <option value="Raw Produce">Raw Produce</option>
+            <option value="Prepared Ingredient">Prepared Ingredient</option>
+            <option value="Finished Product">Finished Product</option>
+            <option value="Other">Other</option>
+        </select>
+    </div>
+
+    <div>
+        <label>Default End Measure Unit</label><br />
+        <select asp-for="NewItem.BaseUnit">
+            <option value="units">units</option>
+            <option value="kg">kg</option>
+            <option value="lbs">lbs</option>
+            <option value="L">L</option>
+            <option value="mL">mL</option>
+            <option value="oz">oz</option>
+            <option value="jars">jars</option>
+        </select>
+    </div>
+
+    <br />
+    <button type="submit">Create Inventory Item</button>
+</form>
+
+<h2>Inventory Item Variations</h2>
+
+<table border="1" cellpadding="8" cellspacing="0" style="width:100%; border-collapse:collapse;">
+    <thead>
+        <tr>
+            <th>Item</th>
+            <th>Category</th>
+            <th>Variation</th>
+            <th>Package Type</th>
+            <th>End Amount</th>
+            <th>End Unit</th>
+            <th>Location</th>
+            <th>Barcode</th>
+            <th>Status</th>
+            <th>Details</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (!Model.ItemVariationRows.Any())
+        {
+            <tr>
+                <td colspan="10">No inventory items found.</td>
+            </tr>
+        }
+        else
+        {
+            @foreach (var row in Model.ItemVariationRows)
+            {
+                <tr>
+                    <td>@row.ItemName</td>
+                    <td>@row.ItemCategory</td>
+                    <td>@row.VariationName</td>
+                    <td>@row.PackageType</td>
+                    <td>@row.EndAmount</td>
+                    <td>@row.EndUnit</td>
+                    <td>@row.Location</td>
+                    <td>@row.Barcode</td>
+                    <td>@row.Status</td>
+                    <td>
+                        <a href="/Farmer/Inventory/InventoryItemDetails?id=@row.ItemId&farmId=@Model.FarmId">Add +</a>
+
+                        <form method="post" asp-page-handler="ToggleActive" style="display:inline; margin-left:8px;">
+                            <input type="hidden" name="id" value="@row.ItemId" />
+                            <input type="hidden" name="farmId" value="@Model.FarmId" />
+                            <button type="submit">Toggle Item</button>
+                        </form>
+
+                        <form method="post" asp-page-handler="Delete" style="display:inline; margin-left:8px;"
+                              onsubmit="return confirm('Delete this inventory item and its variations?');">
+                            <input type="hidden" name="id" value="@row.ItemId" />
+                            <input type="hidden" name="farmId" value="@Model.FarmId" />
+                            <button type="submit">Delete Item</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>

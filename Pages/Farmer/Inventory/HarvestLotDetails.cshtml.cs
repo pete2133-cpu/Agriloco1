@@ -1,3 +1,5 @@
+using Agriloco.Api.Data;
+using Agriloco1.Models.Inventory;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
@@ -5,56 +7,55 @@ namespace Agriloco1.Pages.Farmer.Inventory
 {
     public class HarvestLotDetailsModel : PageModel
     {
+        private readonly AgrilocoContext _db;
+
+        public HarvestLotDetailsModel(AgrilocoContext db)
+        {
+            _db = db;
+        }
+
         [BindProperty(SupportsGet = true)]
         public int Id { get; set; }
 
         [BindProperty]
-        public string LotNumber { get; set; } = "";
+        public HarvestLot HarvestLot { get; set; } = new();
 
-        [BindProperty]
-        public string CropName { get; set; } = "";
-
-        [BindProperty]
-        public string VarietyName { get; set; } = "";
-
-        [BindProperty]
-        public decimal Quantity { get; set; }
-
-        [BindProperty]
-        public string Unit { get; set; } = "lbs";
-
-        [BindProperty]
-        public DateTime HarvestDate { get; set; }
-
-        [BindProperty]
-        public string Status { get; set; } = "Private";
-
-        [BindProperty]
-        public string Notes { get; set; } = "";
-
-        [BindProperty]
-        public string Location { get; set; } = "";
-
-        [BindProperty]
-        public string Workers { get; set; } = "";
-
-        [BindProperty]
-        public string Condition { get; set; } = "Good";
-
-        public void OnGet()
+        public async Task<IActionResult> OnGetAsync()
         {
-            LotNumber = $"HAR-DEMO-{Id:000}";
-            CropName = "Strawberry";
-            VarietyName = "Albion";
-            Quantity = 40;
-            Unit = "flats";
-            HarvestDate = DateTime.Today;
-            Status = "Private";
+            var lot = await _db.HarvestLots.FindAsync(Id);
+
+            if (lot == null)
+            {
+                return NotFound();
+            }
+
+            HarvestLot = lot;
+            return Page();
         }
 
-        public IActionResult OnPost()
+        public async Task<IActionResult> OnPostAsync()
         {
-            return Page();
+            var existing = await _db.HarvestLots.FindAsync(HarvestLot.Id);
+
+            if (existing == null)
+            {
+                return NotFound();
+            }
+
+            existing.CropName = HarvestLot.CropName;
+            existing.VarietyName = HarvestLot.VarietyName ?? "";
+            existing.Quantity = HarvestLot.Quantity;
+            existing.Unit = HarvestLot.Unit;
+            existing.HarvestDate = HarvestLot.HarvestDate;
+            existing.Status = HarvestLot.Status;
+            existing.Notes = HarvestLot.Notes ?? "";
+            existing.Location = HarvestLot.Location ?? "";
+            existing.Workers = HarvestLot.Workers ?? "";
+            existing.Condition = HarvestLot.Condition ?? "";
+
+            await _db.SaveChangesAsync();
+
+            return RedirectToPage("/Farmer/Inventory/HarvestLots");
         }
     }
 }

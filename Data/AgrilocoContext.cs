@@ -1,5 +1,6 @@
 ﻿using Agriloco.Api.Models;
 using Microsoft.EntityFrameworkCore;
+using Agriloco1.Models.Inventory;
 
 namespace Agriloco.Api.Data
 {
@@ -21,12 +22,19 @@ namespace Agriloco.Api.Data
 
         public DbSet<CropCatalogItem> CropCatalogItems => Set<CropCatalogItem>();
 
-        // ✅ aliases (you already use this in CropsController)
         public DbSet<CropCatalogAlias> CropCatalogAliases => Set<CropCatalogAlias>();
-        public DbSet<Agriloco.Api.Models.CropAvailabilityAlertSubscription> CropAvailabilityAlertSubscriptions => Set<Agriloco.Api.Models.CropAvailabilityAlertSubscription>();
 
-        // ✅ NEW: one-time availability alert subscriptions
+        public DbSet<CropAvailabilityAlertSubscription> CropAvailabilityAlertSubscriptions
+            => Set<CropAvailabilityAlertSubscription>();
+
         public DbSet<FarmAvailabilityAlertSubscription> FarmAvailabilityAlertSubscriptions
             => Set<FarmAvailabilityAlertSubscription>();
+
+        public DbSet<HarvestLot> HarvestLots => Set<HarvestLot>();
+        public DbSet<ReceivingLot> ReceivingLots => Set<ReceivingLot>();
+        public DbSet<Supplier> Suppliers => Set<Supplier>();
+        public DbSet<InventoryItem> InventoryItems => Set<InventoryItem>();
+        public DbSet<InventoryItemPackage> InventoryItemPackages => Set<InventoryItemPackage>();
+       
     }
 }

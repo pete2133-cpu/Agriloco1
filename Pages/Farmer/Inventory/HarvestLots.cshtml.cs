@@ -1,12 +1,22 @@
+using Agriloco.Api.Data;
+using Agriloco1.Models.Inventory;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
 
 namespace Agriloco1.Pages.Farmer.Inventory
 {
     public class HarvestLotsModel : PageModel
     {
-        private static readonly List<HarvestLotRow> _harvestLots = new();
-        private static int _nextId = 1;
+        private readonly AgrilocoContext _db;
+
+        public HarvestLotsModel(AgrilocoContext db)
+        {
+            _db = db;
+        }
+
+        [BindProperty(SupportsGet = true)]
+        public int FarmId { get; set; } = 1;
 
         [BindProperty(SupportsGet = true)]
         public string? SearchTerm { get; set; }
@@ -14,70 +24,91 @@ namespace Agriloco1.Pages.Farmer.Inventory
         [BindProperty]
         public NewHarvestInput NewHarvest { get; set; } = new();
 
-        public List<HarvestLotRow> HarvestLots { get; set; } = new();
+        public List<HarvestLot> HarvestLots { get; set; } = new();
 
-        public void OnGet()
+        public async Task OnGetAsync()
         {
             NewHarvest.HarvestDate = DateTime.Today;
 
-            HarvestLots = _harvestLots
-                .Where(x =>
-                    string.IsNullOrWhiteSpace(SearchTerm)
-                    || x.LotNumber.Contains(SearchTerm, StringComparison.OrdinalIgnoreCase)
-                    || x.CropName.Contains(SearchTerm, StringComparison.OrdinalIgnoreCase)
-                    || (!string.IsNullOrWhiteSpace(x.VarietyName) && x.VarietyName.Contains(SearchTerm, StringComparison.OrdinalIgnoreCase))
-                    || x.Status.Contains(SearchTerm, StringComparison.OrdinalIgnoreCase))
+            var query = _db.HarvestLots
+                .Where(x => x.FarmId == FarmId)
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(SearchTerm))
+            {
+                query = query.Where(x =>
+                    x.LotNumber.Contains(SearchTerm) ||
+                    x.CropName.Contains(SearchTerm) ||
+                    x.VarietyName.Contains(SearchTerm) ||
+                    x.Status.Contains(SearchTerm));
+            }
+
+            HarvestLots = await query
                 .OrderByDescending(x => x.HarvestDate)
                 .ThenByDescending(x => x.Id)
-                .ToList();
+                .ToListAsync();
         }
 
-        public IActionResult OnPostCreate()
+        public async Task<IActionResult> OnPostCreateAsync()
         {
             if (!ModelState.IsValid)
             {
-                OnGet();
+                await OnGetAsync();
                 return Page();
             }
 
-            var id = _nextId++;
-
-            var lot = new HarvestLotRow
+            var lot = new HarvestLot
             {
-                Id = id,
-                LotNumber = GenerateLotNumber(id, NewHarvest.HarvestDate),
+                FarmId = FarmId,
                 CropName = NewHarvest.CropName.Trim(),
-                VarietyName = string.IsNullOrWhiteSpace(NewHarvest.VarietyName)
-                    ? ""
-                    : NewHarvest.VarietyName.Trim(),
+                VarietyName = string.IsNullOrWhiteSpace(NewHarvest.VarietyName) ? "" : NewHarvest.VarietyName.Trim(),
                 Quantity = NewHarvest.Quantity,
                 Unit = NewHarvest.Unit,
                 HarvestDate = NewHarvest.HarvestDate,
                 Status = "Private",
+                Notes = "",
+                Location = "",
+                Workers = "",
+                Condition = "Good",
                 PhotoCount = 0,
-                LocationLabel = "Add"
+                CreatedAt = DateTime.Now
             };
 
-            _harvestLots.Add(lot);
+            _db.HarvestLots.Add(lot);
+            await _db.SaveChangesAsync();
 
-            return RedirectToPage();
+            lot.LotNumber = $"HAR-{lot.HarvestDate:yyyyMMdd}-{lot.Id:000}";
+            await _db.SaveChangesAsync();
+
+            return RedirectToPage(new { farmId = FarmId });
         }
 
-        public IActionResult OnPostToggleStatus(int id)
+        public async Task<IActionResult> OnPostToggleStatusAsync(int id)
         {
-            var lot = _harvestLots.FirstOrDefault(x => x.Id == id);
+            var lot = await _db.HarvestLots
+                .FirstOrDefaultAsync(x => x.Id == id && x.FarmId == FarmId);
 
             if (lot != null)
             {
                 lot.Status = lot.Status == "Private" ? "Available" : "Private";
+                await _db.SaveChangesAsync();
             }
 
-            return RedirectToPage();
+            return RedirectToPage(new { farmId = FarmId });
         }
 
-        private static string GenerateLotNumber(int id, DateTime harvestDate)
+        public async Task<IActionResult> OnPostDeleteAsync(int id)
         {
-            return $"HAR-{harvestDate:yyyyMMdd}-{id:000}";
+            var lot = await _db.HarvestLots
+                .FirstOrDefaultAsync(x => x.Id == id && x.FarmId == FarmId);
+
+            if (lot != null)
+            {
+                _db.HarvestLots.Remove(lot);
+                await _db.SaveChangesAsync();
+            }
+
+            return RedirectToPage(new { farmId = FarmId });
         }
 
         public class NewHarvestInput
@@ -87,20 +118,6 @@ namespace Agriloco1.Pages.Farmer.Inventory
             public decimal Quantity { get; set; }
             public string Unit { get; set; } = "lbs";
             public DateTime HarvestDate { get; set; } = DateTime.Today;
-        }
-
-        public class HarvestLotRow
-        {
-            public int Id { get; set; }
-            public string LotNumber { get; set; } = "";
-            public string CropName { get; set; } = "";
-            public string VarietyName { get; set; } = "";
-            public decimal Quantity { get; set; }
-            public string Unit { get; set; } = "";
-            public DateTime HarvestDate { get; set; }
-            public string Status { get; set; } = "Private";
-            public int PhotoCount { get; set; }
-            public string LocationLabel { get; set; } = "Add";
         }
     }
 }

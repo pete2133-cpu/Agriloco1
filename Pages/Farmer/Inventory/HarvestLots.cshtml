@@ -86,7 +86,7 @@
                     <td>@lot.HarvestDate.ToString("yyyy-MM-dd")</td>
                     <td>@lot.Status</td>
                     <td>@lot.PhotoCount</td>
-                    <td>@lot.LocationLabel</td>
+                    <td>@(string.IsNullOrWhiteSpace(lot.Location) ? "Add" : lot.Location)</td>
                     <td>
                         <form method="post" asp-page-handler="ToggleStatus" style="display:inline;">
                             <input type="hidden" name="id" value="@lot.Id" />
@@ -94,6 +94,12 @@
                         </form>
 
                         <a href="/Farmer/Inventory/HarvestLotDetails?id=@lot.Id" style="margin-left:8px;">Add +</a>
+
+                        <form method="post" asp-page-handler="Delete" style="display:inline; margin-left:8px;"
+                              onsubmit="return confirm('Delete this harvest lot? This cannot be undone.');">
+                            <input type="hidden" name="id" value="@lot.Id" />
+                            <button type="submit">Delete</button>
+                        </form>
                     </td>
                 </tr>
             }
