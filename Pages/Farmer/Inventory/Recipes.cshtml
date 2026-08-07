@@ -1,4 +1,167 @@
 ﻿@page
 @model Agriloco1.Pages.Farmer.Inventory.RecipesModel
-@{
+
+<h1>Recipes</h1>
+
+<p>
+    Create reusable recipes for products made by this business.
+    Recipes do not consume inventory until they are used in a production batch.
+</p>
+
+<p><strong>Current Farm ID:</strong> @Model.FarmId</p>
+
+<form method="get" style="margin-bottom:20px;">
+    <input type="hidden" name="FarmId" value="@Model.FarmId" />
+
+    <input type="text"
+           name="SearchTerm"
+           value="@Model.SearchTerm"
+           placeholder="Search recipe, category, status..."
+           style="width:350px;" />
+
+    <button type="submit">Search</button>
+
+    <a href="/Farmer/Inventory/Recipes?farmId=@Model.FarmId">
+        Clear
+    </a>
+</form>
+
+@if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+{
+    <div style="padding:10px; margin-bottom:15px; border:1px solid red; color:red;">
+        @Model.ErrorMessage
+    </div>
 }
+
+<h2>Create Recipe</h2>
+
+<form method="post" asp-page-handler="Create" style="margin-bottom:30px;">
+    <input type="hidden" asp-for="FarmId" />
+
+    <div>
+        <label>Recipe Name</label><br />
+
+        <input asp-for="NewRecipe.RecipeName"
+               placeholder="Strawberry Jam, Apple Sauce, Salsa..."
+               style="width:400px;"
+               required />
+    </div>
+
+    <br />
+
+    <div>
+        <label>Recipe Category</label><br />
+
+        <select asp-for="NewRecipe.RecipeCategory" style="width:300px;">
+            <option value="Jam">Jam</option>
+            <option value="Jelly">Jelly</option>
+            <option value="Sauce">Sauce</option>
+            <option value="Salsa">Salsa</option>
+            <option value="Syrup">Syrup</option>
+            <option value="Juice">Juice</option>
+            <option value="Beverage">Beverage</option>
+            <option value="Vinegar">Vinegar</option>
+            <option value="Fermented Product">Fermented Product</option>
+            <option value="Frozen Product">Frozen Product</option>
+            <option value="Prepared Ingredient">Prepared Ingredient</option>
+            <option value="Baked Product">Baked Product</option>
+            <option value="Meal">Meal</option>
+            <option value="Other">Other</option>
+        </select>
+    </div>
+
+    <br />
+
+    <button type="submit">Create Recipe</button>
+</form>
+
+<h2>Recipe List</h2>
+
+<table border="1"
+       cellpadding="8"
+       cellspacing="0"
+       style="width:100%; border-collapse:collapse;">
+
+    <thead>
+        <tr>
+            <th>Recipe</th>
+            <th>Category</th>
+            <th>Expected Yield</th>
+            <th>Status</th>
+            <th>Active</th>
+            <th>Last Updated</th>
+            <th>Details</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        @if (!Model.Recipes.Any())
+        {
+            <tr>
+                <td colspan="7">No recipes found.</td>
+            </tr>
+        }
+        else
+        {
+            @foreach (var recipe in Model.Recipes)
+            {
+                <tr>
+                    <td>@recipe.RecipeName</td>
+
+                    <td>@recipe.RecipeCategory</td>
+
+                    <td>
+                        @if (recipe.ExpectedYieldQuantity.HasValue)
+                        {
+                            <span>
+                                @recipe.ExpectedYieldQuantity
+                                @recipe.ExpectedYieldUnit
+                            </span>
+                        }
+                        else
+                        {
+                            <span>-</span>
+                        }
+                    </td>
+
+                    <td>@recipe.Status</td>
+
+                    <td>@(recipe.IsActive ? "Yes" : "No")</td>
+
+                    <td>@recipe.UpdatedAt.ToString("yyyy-MM-dd")</td>
+
+                    <td>
+                        <a href="/Farmer/Inventory/RecipeDetails?id=@recipe.Id&farmId=@Model.FarmId">
+                            Add +
+                        </a>
+
+                        <form method="post"
+                              asp-page-handler="ToggleActive"
+                              style="display:inline; margin-left:8px;">
+
+                            <input type="hidden" name="id" value="@recipe.Id" />
+                            <input type="hidden" name="farmId" value="@Model.FarmId" />
+
+                            <button type="submit">
+                                Toggle Active
+                            </button>
+                        </form>
+
+                        <form method="post"
+                              asp-page-handler="Delete"
+                              style="display:inline; margin-left:8px;"
+                              onsubmit="return confirm('Delete this recipe? This cannot be undone.');">
+
+                            <input type="hidden" name="id" value="@recipe.Id" />
+                            <input type="hidden" name="farmId" value="@Model.FarmId" />
+
+                            <button type="submit">
+                                Delete
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>

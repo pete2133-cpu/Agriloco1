@@ -1,0 +1,879 @@
+﻿@page
+@model Agriloco1.Pages.Farmer.Inventory.ProductionRunDetailsModel
+
+<h1>Production Run Details</h1>
+
+<p>
+    <a href="/Farmer/Inventory/ProductionRuns?farmId=@Model.FarmId">
+        ← Back to Production Runs
+    </a>
+</p>
+
+@if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+{
+    <div style="padding:10px; margin-bottom:15px; border:1px solid red; color:red;">
+        @Model.ErrorMessage
+    </div>
+}
+
+@if (!string.IsNullOrWhiteSpace(Model.SuccessMessage))
+{
+    <div style="padding:10px; margin-bottom:15px; border:1px solid green; color:green;">
+        @Model.SuccessMessage
+    </div>
+}
+
+<h2>Batch Information</h2>
+
+<form method="post" asp-page-handler="SaveHeader">
+    <input type="hidden" asp-for="ProductionRun.Id" />
+    <input type="hidden" asp-for="FarmId" />
+
+    <table cellpadding="6">
+        <tr>
+            <td><strong>Batch Number</strong></td>
+            <td>@Model.ProductionRun.BatchNumber</td>
+        </tr>
+
+        <tr>
+            <td><strong>Recipe</strong></td>
+            <td>@Model.ProductionRun.RecipeName</td>
+        </tr>
+
+        <tr>
+            <td><label>Production Date</label></td>
+            <td>
+                <input asp-for="ProductionRun.ProductionDate"
+                       type="date" />
+            </td>
+        </tr>
+
+        <tr>
+            <td><label>Process Type</label></td>
+            <td>
+                <select asp-for="ProductionRun.ProcessType"
+                        style="width:300px;">
+                    <option value="Cooking">Cooking</option>
+                    <option value="Fermentation">Fermentation</option>
+                    <option value="Aging">Aging</option>
+                    <option value="Juicing">Juicing</option>
+                    <option value="Pressing">Pressing</option>
+                    <option value="Steaming">Steaming</option>
+                    <option value="Filtering">Filtering</option>
+                    <option value="Pasteurizing">Pasteurizing</option>
+                    <option value="Freezing">Freezing</option>
+                    <option value="Drying">Drying</option>
+                    <option value="Freeze Drying">Freeze Drying</option>
+                    <option value="Blending">Blending</option>
+                    <option value="Cutting / Preparation">Cutting / Preparation</option>
+                    <option value="Butchering">Butchering</option>
+                    <option value="Packaging">Packaging</option>
+                    <option value="Other Food Processing">Other Food Processing</option>
+                </select>
+            </td>
+        </tr>
+
+        <tr>
+            <td><label>Started At</label></td>
+            <td>
+                <input asp-for="ProductionRun.StartedAt"
+                       type="datetime-local" />
+            </td>
+        </tr>
+
+        <tr>
+            <td><label>Ended At</label></td>
+            <td>
+                <input asp-for="ProductionRun.EndedAt"
+                       type="datetime-local" />
+            </td>
+        </tr>
+
+        <tr>
+            <td><label>Actual Yield</label></td>
+            <td>
+                <input asp-for="ProductionRun.ActualYieldQuantity"
+                       type="number"
+                       step="0.001"
+                       style="width:140px;" />
+
+                <input asp-for="ProductionRun.ActualYieldUnit"
+                       list="yieldUnits"
+                       style="width:140px;"
+                       placeholder="jars, kg, L..." />
+
+                <datalist id="yieldUnits">
+                    <option value="units"></option>
+                    <option value="jars"></option>
+                    <option value="bottles"></option>
+                    <option value="cases"></option>
+                    <option value="kg"></option>
+                    <option value="g"></option>
+                    <option value="lbs"></option>
+                    <option value="oz"></option>
+                    <option value="L"></option>
+                    <option value="mL"></option>
+                </datalist>
+            </td>
+        </tr>
+
+        <tr>
+            <td><label>Output Inventory Item</label></td>
+            <td>
+                <select asp-for="ProductionRun.OutputInventoryItemId"
+                        style="width:400px;">
+                    <option value="">-- Do not add output to inventory yet --</option>
+
+                    @foreach (var item in Model.InventoryItemOptions)
+                    {
+                        <option value="@item.Id">
+                            @item.DisplayName
+                        </option>
+                    }
+                </select>
+            </td>
+        </tr>
+
+        <tr>
+            <td><label>Notes</label></td>
+            <td>
+                <textarea asp-for="ProductionRun.Notes"
+                          rows="4"
+                          style="width:650px;"></textarea>
+            </td>
+        </tr>
+    </table>
+
+    <br />
+
+    <button type="submit">Save Batch Information</button>
+</form>
+
+<hr />
+
+<h2>Recipe Scaling and Actual Ingredient Use</h2>
+
+<p>
+    The first actual ingredient amount entered establishes the scale.
+    Later actual amounts do not change that scale.
+</p>
+
+<p>
+    <strong>Current Scale:</strong>
+    @(Model.ProductionRun.ScaleFactor.HasValue
+        ? Model.ProductionRun.ScaleFactor.Value.ToString("0.###") + "×"
+        : "Not established")
+</p>
+
+@if (!Model.ProductionRun.IngredientsCommitted &&
+     Model.ProductionRun.Status == "Draft" &&
+     Model.ProductionRun.ScaleFactor.HasValue)
+{
+    <form method="post" asp-page-handler="ResetScale"
+          onsubmit="return confirm('Reset the scale and clear all actual ingredient amounts?');">
+
+        <input type="hidden" name="runId" value="@Model.ProductionRun.Id" />
+        <input type="hidden" name="farmId" value="@Model.FarmId" />
+
+        <button type="submit">Reset Scale and Actual Amounts</button>
+    </form>
+
+    <br />
+}
+
+<table border="1"
+       cellpadding="8"
+       cellspacing="0"
+       style="width:100%; border-collapse:collapse;">
+
+    <thead>
+        <tr>
+            <th>Order</th>
+            <th>Ingredient</th>
+            <th>Variation</th>
+            <th>Recipe Amount</th>
+            <th>Scaled Suggestion</th>
+            <th>Actual Used</th>
+            <th>Unit</th>
+            <th>Inventory Link</th>
+            <th>Committed</th>
+            <th>Save</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        @foreach (var ingredient in Model.Ingredients)
+        {
+            var rowState = Model.GetIngredientState(ingredient);
+
+            <tr>
+                <td>@ingredient.SortOrder</td>
+
+                <td>
+                    @ingredient.IngredientName
+
+                    @if (ingredient.IsScaleAnchor)
+                    {
+                        <br />
+                        <strong>Scale Anchor</strong>
+                    }
+                </td>
+
+                <td>
+                    @(string.IsNullOrWhiteSpace(ingredient.VariationName)
+                        ? "-"
+                        : ingredient.VariationName)
+                </td>
+
+                <td>
+                    @ingredient.RecipeQuantity
+                    @ingredient.Unit
+                </td>
+
+                <td style="color:grey;">
+                    @if (ingredient.SuggestedQuantity.HasValue)
+                    {
+                        <span>
+                            @ingredient.SuggestedQuantity.Value.ToString("0.###")
+                            @ingredient.Unit
+                        </span>
+                    }
+                    else
+                    {
+                        <span>-</span>
+                    }
+                </td>
+
+                <td style="@Model.GetActualQuantityStyle(rowState)">
+                    @if (ingredient.ActualQuantity.HasValue)
+                    {
+                        <strong>
+                            @ingredient.ActualQuantity.Value.ToString("0.###")
+                        </strong>
+                    }
+                    else
+                    {
+                        <span style="color:grey;">
+                            @(ingredient.SuggestedQuantity?.ToString("0.###") ?? "")
+                        </span>
+                    }
+                </td>
+
+                <td>@ingredient.Unit</td>
+
+                <td>
+                    @(ingredient.InventoryItemId.HasValue
+                        ? "Linked"
+                        : "Not Tracked")
+                </td>
+
+                <td>
+                    @ingredient.CommittedQuantity.ToString("0.###")
+                    @ingredient.Unit
+                </td>
+
+                <td>
+                    @if (Model.ProductionRun.Status != "Complete" &&
+                         Model.ProductionRun.Status != "Cancelled")
+                    {
+                        <form method="post" asp-page-handler="SaveIngredient">
+                            <input type="hidden"
+                                   name="ingredientId"
+                                   value="@ingredient.Id" />
+
+                            <input type="hidden"
+                                   name="runId"
+                                   value="@Model.ProductionRun.Id" />
+
+                            <input type="hidden"
+                                   name="farmId"
+                                   value="@Model.FarmId" />
+
+                            <input type="number"
+                                   name="actualQuantity"
+                                   value="@(ingredient.ActualQuantity?.ToString("0.###"))"
+                                   step="0.001"
+                                   min="0"
+                                   style="width:120px;" />
+
+                            <button type="submit">Save</button>
+                        </form>
+                    }
+                    else
+                    {
+                        <span>Locked</span>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<br />
+
+@if (Model.ProductionRun.Status != "Complete" &&
+     Model.ProductionRun.Status != "Cancelled")
+{
+    @if (!Model.ProductionRun.IngredientsCommitted)
+    {
+        <form method="post"
+              asp-page-handler="StartBatch"
+              style="display:inline;"
+              onsubmit="return confirm('Commit confirmed ingredient amounts and start this batch?');">
+
+            <input type="hidden" name="runId" value="@Model.ProductionRun.Id" />
+            <input type="hidden" name="farmId" value="@Model.FarmId" />
+
+            <button type="submit">Commit Ingredients & Start Batch</button>
+        </form>
+    }
+    else
+    {
+        <form method="post"
+              asp-page-handler="SaveProgress"
+              style="display:inline;">
+
+            <input type="hidden" name="runId" value="@Model.ProductionRun.Id" />
+            <input type="hidden" name="farmId" value="@Model.FarmId" />
+
+            <button type="submit">Save Progress & Adjust Inventory</button>
+        </form>
+    }
+
+    <form method="post"
+          asp-page-handler="CompleteBatch"
+          style="display:inline; margin-left:10px;"
+          onsubmit="return confirm('Complete this batch and post its finished output?');">
+
+        <input type="hidden" name="runId" value="@Model.ProductionRun.Id" />
+        <input type="hidden" name="farmId" value="@Model.FarmId" />
+
+        <button type="submit">Complete Batch</button>
+    </form>
+
+    <form method="post"
+          asp-page-handler="CancelBatch"
+          style="display:inline; margin-left:10px;"
+          onsubmit="return confirm('Cancel this batch and return committed inventory?');">
+
+        <input type="hidden" name="runId" value="@Model.ProductionRun.Id" />
+        <input type="hidden" name="farmId" value="@Model.FarmId" />
+
+        <button type="submit">Cancel Batch</button>
+    </form>
+}
+
+<hr />
+
+<h2>Labour and Work Entries</h2>
+
+<p>
+    A work entry has a default duration. Each added worker receives that duration,
+    but their individual hours can be changed.
+</p>
+
+<form method="post" asp-page-handler="AddWorkEntry">
+    <input type="hidden" name="runId" value="@Model.ProductionRun.Id" />
+    <input type="hidden" name="farmId" value="@Model.FarmId" />
+
+    <label>Work Type</label><br />
+
+    <select asp-for="NewWorkEntry.WorkType" style="width:250px;">
+        <option value="Production">Production</option>
+        <option value="Preparation">Preparation</option>
+        <option value="Cooking">Cooking</option>
+        <option value="Processing">Processing</option>
+        <option value="Filtering">Filtering</option>
+        <option value="Packaging">Packaging</option>
+        <option value="Cleaning">Cleaning</option>
+        <option value="Batch Check">Batch Check</option>
+        <option value="Other">Other</option>
+    </select>
+
+    <br /><br />
+
+    <label>Work Date and Time</label><br />
+
+    <input asp-for="NewWorkEntry.WorkDate"
+           type="datetime-local" />
+
+    <br /><br />
+
+    <label>Default Hours Per Worker</label><br />
+
+    <input asp-for="NewWorkEntry.DefaultHours"
+           type="number"
+           step="0.25"
+           min="0"
+           style="width:150px;" />
+
+    <br /><br />
+
+    <label>First Worker <small>(optional)</small></label><br />
+
+    <input asp-for="NewWorkEntry.FirstWorkerName"
+           placeholder="Pete"
+           style="width:250px;" />
+
+    <br /><br />
+
+    <label>Hourly Rate <small>(optional)</small></label><br />
+
+    <input asp-for="NewWorkEntry.FirstWorkerHourlyRate"
+           type="number"
+           step="0.01"
+           min="0"
+           style="width:150px;" />
+
+    <br /><br />
+
+    <label>Notes</label><br />
+
+    <input asp-for="NewWorkEntry.Notes"
+           style="width:600px;" />
+
+    <br /><br />
+
+    <button type="submit">Add Work Entry</button>
+</form>
+
+<br />
+
+@if (!Model.WorkEntries.Any())
+{
+    <p>No labour or work entries have been recorded.</p>
+}
+else
+{
+    @foreach (var workEntry in Model.WorkEntries)
+    {
+        var workers = Model.GetWorkers(workEntry.Id);
+
+        <div style="border:1px solid #999; padding:12px; margin-bottom:15px;">
+            <h3>
+                @workEntry.WorkType —
+                @workEntry.WorkDate.ToString("yyyy-MM-dd HH:mm")
+            </h3>
+
+            <p>
+                <strong>Default Hours:</strong>
+                @workEntry.DefaultHours.ToString("0.##")
+            </p>
+
+            @if (!string.IsNullOrWhiteSpace(workEntry.Notes))
+            {
+                <p><strong>Notes:</strong> @workEntry.Notes</p>
+            }
+
+            <table border="1"
+                   cellpadding="6"
+                   cellspacing="0"
+                   style="width:100%; border-collapse:collapse;">
+
+                <thead>
+                    <tr>
+                        <th>Worker</th>
+                        <th>Hours</th>
+                        <th>Hourly Rate</th>
+                        <th>Labour Cost</th>
+                        <th>Save</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @if (!workers.Any())
+                    {
+                        <tr>
+                            <td colspan="5">No workers added.</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var worker in workers)
+                        {
+                            <tr>
+                                <td>@worker.WorkerName</td>
+
+                                <td>@worker.HoursWorked.ToString("0.##")</td>
+
+                                <td>
+                                    @(worker.HourlyRate.HasValue
+                                        ? "$" + worker.HourlyRate.Value.ToString("0.00")
+                                        : "-")
+                                </td>
+
+                                <td>
+                                    @(worker.LabourCost.HasValue
+                                        ? "$" + worker.LabourCost.Value.ToString("0.00")
+                                        : "-")
+                                </td>
+
+                                <td>
+                                    <form method="post"
+                                          asp-page-handler="UpdateWorker"
+                                          style="display:inline;">
+
+                                        <input type="hidden"
+                                               name="workerId"
+                                               value="@worker.Id" />
+
+                                        <input type="hidden"
+                                               name="runId"
+                                               value="@Model.ProductionRun.Id" />
+
+                                        <input type="hidden"
+                                               name="farmId"
+                                               value="@Model.FarmId" />
+
+                                        <input type="number"
+                                               name="hoursWorked"
+                                               value="@worker.HoursWorked"
+                                               step="0.25"
+                                               min="0"
+                                               style="width:90px;" />
+
+                                        <input type="number"
+                                               name="hourlyRate"
+                                               value="@worker.HourlyRate"
+                                               step="0.01"
+                                               min="0"
+                                               style="width:100px;" />
+
+                                        <button type="submit">Save</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+
+            <br />
+
+            <form method="post" asp-page-handler="AddWorker">
+                <input type="hidden"
+                       name="workEntryId"
+                       value="@workEntry.Id" />
+
+                <input type="hidden"
+                       name="runId"
+                       value="@Model.ProductionRun.Id" />
+
+                <input type="hidden"
+                       name="farmId"
+                       value="@Model.FarmId" />
+
+                <input type="text"
+                       name="workerName"
+                       placeholder="Worker name"
+                       required />
+
+                <input type="number"
+                       name="hoursWorked"
+                       value="@workEntry.DefaultHours"
+                       step="0.25"
+                       min="0"
+                       style="width:100px;" />
+
+                <input type="number"
+                       name="hourlyRate"
+                       step="0.01"
+                       min="0"
+                       placeholder="Hourly rate"
+                       style="width:120px;" />
+
+                <button type="submit">Add Worker</button>
+            </form>
+
+            <p>
+                <strong>Entry Labour Hours:</strong>
+                @Model.GetWorkEntryHours(workEntry.Id).ToString("0.##")
+            </p>
+        </div>
+    }
+}
+
+<p>
+    <strong>Total Batch Labour Hours:</strong>
+    @Model.TotalLabourHours.ToString("0.##")
+</p>
+
+@if (Model.TotalLabourCost.HasValue)
+{
+    <p>
+        <strong>Total Batch Labour Cost:</strong>
+        $@Model.TotalLabourCost.Value.ToString("0.00")
+    </p>
+}
+
+<hr />
+
+<h2>Batch Checks and Measurements</h2>
+
+<p>
+    One batch check can contain multiple measurements and one labour event.
+    The default check duration is one hour.
+</p>
+
+<form method="post" asp-page-handler="AddCheck">
+    <input type="hidden" name="runId" value="@Model.ProductionRun.Id" />
+    <input type="hidden" name="farmId" value="@Model.FarmId" />
+
+    <div>
+        <label>Recorded At</label><br />
+
+        <input asp-for="NewCheck.RecordedAt"
+               type="datetime-local" />
+    </div>
+
+    <br />
+
+    <div>
+        <label>Check Type</label><br />
+
+        <input asp-for="NewCheck.ObservationType"
+               list="checkTypes"
+               style="width:300px;" />
+
+        <datalist id="checkTypes">
+            <option value="Batch Check"></option>
+            <option value="Fermentation Check"></option>
+            <option value="Temperature Check"></option>
+            <option value="Quality Check"></option>
+            <option value="Pasteurization Check"></option>
+            <option value="Filtering Check"></option>
+            <option value="Aging Check"></option>
+        </datalist>
+    </div>
+
+    <br />
+
+    <div>
+        <label>Worker Name</label><br />
+
+        <input asp-for="NewCheck.WorkerName"
+               placeholder="Pete"
+               style="width:250px;"
+               required />
+    </div>
+
+    <br />
+
+    <div>
+        <label>Worker Hours</label><br />
+
+        <input asp-for="NewCheck.WorkerHours"
+               type="number"
+               step="0.25"
+               min="0"
+               style="width:150px;" />
+    </div>
+
+    <br />
+
+    <div>
+        <label>Hourly Rate <small>(optional)</small></label><br />
+
+        <input asp-for="NewCheck.HourlyRate"
+               type="number"
+               step="0.01"
+               min="0"
+               style="width:150px;" />
+    </div>
+
+    <br />
+
+    <div>
+        <label>First Measurement</label><br />
+
+        <input asp-for="NewCheck.MeasurementName"
+               list="measurementNames"
+               placeholder="SG, pH, Temperature..."
+               style="width:250px;" />
+
+        <input asp-for="NewCheck.ValueText"
+               placeholder="1.025, 18, Clear..."
+               style="width:180px;" />
+
+        <input asp-for="NewCheck.Unit"
+               placeholder="SG, pH, °C..."
+               style="width:120px;" />
+
+        <datalist id="measurementNames">
+            <option value="Specific Gravity"></option>
+            <option value="pH"></option>
+            <option value="Temperature"></option>
+            <option value="Brix"></option>
+            <option value="Acidity"></option>
+            <option value="Pressure"></option>
+            <option value="Weight"></option>
+            <option value="Internal Temperature"></option>
+            <option value="Condition"></option>
+        </datalist>
+    </div>
+
+    <br />
+
+    <div>
+        <label>Notes</label><br />
+
+        <textarea asp-for="NewCheck.Notes"
+                  rows="3"
+                  style="width:650px;"></textarea>
+    </div>
+
+    <br />
+
+    <button type="submit">Save Batch Check</button>
+</form>
+
+<br />
+
+@if (!Model.Observations.Any())
+{
+    <p>No batch checks recorded.</p>
+}
+else
+{
+    @foreach (var observation in Model.Observations)
+    {
+        var values = Model.GetObservationValues(observation.Id);
+        var checkWorkers = Model.GetObservationWorkers(observation);
+
+        <div style="border:1px solid #999; padding:12px; margin-bottom:15px;">
+            <h3>
+                @observation.ObservationType —
+                @observation.RecordedAt.ToString("yyyy-MM-dd HH:mm")
+            </h3>
+
+            @if (checkWorkers.Any())
+            {
+                <p>
+                    <strong>Workers:</strong>
+                    @string.Join(", ", checkWorkers.Select(x =>
+                        $"{x.WorkerName} ({x.HoursWorked:0.##} h)"))
+                </p>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(observation.Notes))
+            {
+                <p>
+                    <strong>Notes:</strong>
+                    @observation.Notes
+                </p>
+            }
+
+            <table border="1"
+                   cellpadding="6"
+                   cellspacing="0"
+                   style="width:100%; border-collapse:collapse;">
+
+                <thead>
+                    <tr>
+                        <th>Measurement</th>
+                        <th>Value</th>
+                        <th>Unit</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @if (!values.Any())
+                    {
+                        <tr>
+                            <td colspan="4">No measurements added.</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var value in values)
+                        {
+                            <tr>
+                                <td>@value.MeasurementName</td>
+                                <td>@value.ValueText</td>
+                                <td>@value.Unit</td>
+                                <td>@value.Notes</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+
+            <br />
+
+            <form method="post" asp-page-handler="AddObservationValue">
+                <input type="hidden"
+                       name="observationId"
+                       value="@observation.Id" />
+
+                <input type="hidden"
+                       name="runId"
+                       value="@Model.ProductionRun.Id" />
+
+                <input type="hidden"
+                       name="farmId"
+                       value="@Model.FarmId" />
+
+                <input type="text"
+                       name="measurementName"
+                       placeholder="Measurement"
+                       required />
+
+                <input type="text"
+                       name="valueText"
+                       placeholder="Value"
+                       required />
+
+                <input type="text"
+                       name="unit"
+                       placeholder="Unit" />
+
+                <input type="text"
+                       name="notes"
+                       placeholder="Notes" />
+
+                <button type="submit">Add Measurement</button>
+            </form>
+
+            <br />
+
+            @if (observation.ProductionWorkEntryId.HasValue)
+            {
+                <form method="post" asp-page-handler="AddWorker">
+                    <input type="hidden"
+                           name="workEntryId"
+                           value="@observation.ProductionWorkEntryId.Value" />
+
+                    <input type="hidden"
+                           name="runId"
+                           value="@Model.ProductionRun.Id" />
+
+                    <input type="hidden"
+                           name="farmId"
+                           value="@Model.FarmId" />
+
+                    <input type="text"
+                           name="workerName"
+                           placeholder="Additional worker"
+                           required />
+
+                    <input type="number"
+                           name="hoursWorked"
+                           value="1"
+                           step="0.25"
+                           min="0"
+                           style="width:100px;" />
+
+                    <input type="number"
+                           name="hourlyRate"
+                           step="0.01"
+                           min="0"
+                           placeholder="Hourly rate"
+                           style="width:120px;" />
+
+                    <button type="submit">Add Check Worker</button>
+                </form>
+            }
+        </div>
+    }
+}

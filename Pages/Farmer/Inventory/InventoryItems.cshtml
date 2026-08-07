@@ -2,6 +2,12 @@
 @model Agriloco1.Pages.Farmer.Inventory.InventoryItemsModel
 
 <h1>Inventory Items</h1>
+@if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+{
+    <div style="padding:10px; margin-bottom:15px; border:1px solid red; color:red;">
+        @Model.ErrorMessage
+    </div>
+}
 
 <p>Master list of items and saved receivable variations.</p>
 

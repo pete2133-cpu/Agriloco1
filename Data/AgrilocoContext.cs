@@ -35,6 +35,21 @@ namespace Agriloco.Api.Data
         public DbSet<Supplier> Suppliers => Set<Supplier>();
         public DbSet<InventoryItem> InventoryItems => Set<InventoryItem>();
         public DbSet<InventoryItemPackage> InventoryItemPackages => Set<InventoryItemPackage>();
-       
+        public DbSet<ReceivingLotCustomField> ReceivingLotCustomFields => Set<ReceivingLotCustomField>();
+        public DbSet<Recipe> Recipes => Set<Recipe>();
+        public DbSet<RecipeIngredient> RecipeIngredients => Set<RecipeIngredient>();
+        public DbSet<InventoryMovement> InventoryMovements => Set<InventoryMovement>();
+
+        public DbSet<ProductionRun> ProductionRuns => Set<ProductionRun>();
+
+        public DbSet<ProductionRunIngredient> ProductionRunIngredients => Set<ProductionRunIngredient>();
+
+        public DbSet<ProductionWorkEntry> ProductionWorkEntries => Set<ProductionWorkEntry>();
+
+        public DbSet<ProductionWorkEntryWorker> ProductionWorkEntryWorkers => Set<ProductionWorkEntryWorker>();
+
+        public DbSet<ProductionObservation> ProductionObservations => Set<ProductionObservation>();
+
+        public DbSet<ProductionObservationValue> ProductionObservationValues => Set<ProductionObservationValue>();
     }
 }

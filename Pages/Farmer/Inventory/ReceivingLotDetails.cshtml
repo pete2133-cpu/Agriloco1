@@ -1,0 +1,192 @@
+﻿@page
+@model Agriloco1.Pages.Farmer.Inventory.ReceivingLotDetailsModel
+
+<h1>Receiving Lot Details</h1>
+
+<p>
+    <a href="/Farmer/Inventory/ReceivingLots?farmId=@Model.FarmId">← Back to Receiving Lots</a>
+</p>
+
+<form method="post" asp-page-handler="Save">
+    <input type="hidden" asp-for="ReceivingLot.Id" />
+    <input type="hidden" asp-for="FarmId" />
+
+    <h2>Base Receiving Information</h2>
+
+    <div>
+        <label>Lot Number</label><br />
+        <input asp-for="ReceivingLot.LotNumber" readonly style="width:250px;" />
+    </div>
+
+    <br />
+
+    <div>
+        <label>Received Date</label><br />
+        <input asp-for="ReceivingLot.ReceivedDate" type="date" />
+    </div>
+
+    <br />
+
+    <p>
+        <strong>Supplier:</strong> @Model.ReceivingLot.SupplierName<br />
+        <strong>Item:</strong> @Model.ReceivingLot.InventoryItemName<br />
+        <strong>Variation:</strong> @Model.ReceivingLot.VariationName
+    </p>
+
+    <p>
+        <strong>Calculation:</strong>
+        @Model.ReceivingLot.UnitsReceived ×
+        @Model.ReceivingLot.UsableQuantityPerUnit
+        @Model.ReceivingLot.UsableUnit
+        =
+        <strong>@Model.ReceivingLot.TotalUsableQuantity @Model.ReceivingLot.UsableUnit</strong>
+    </p>
+
+    <hr />
+
+    <h2>Standard Details</h2>
+
+    <div>
+        <label>Status</label><br />
+        <select asp-for="ReceivingLot.Status" style="width:250px;">
+            <option value="Received">Received</option>
+            <option value="Stored">Stored</option>
+            <option value="On Hold">On Hold</option>
+            <option value="Rejected">Rejected</option>
+            <option value="Used">Used</option>
+            <option value="Archived">Archived</option>
+        </select>
+    </div>
+
+    <br />
+
+    <div>
+        <label>Condition</label><br />
+        <select asp-for="ReceivingLot.Condition" style="width:250px;">
+            <option value="Good">Good</option>
+            <option value="Fair">Fair</option>
+            <option value="Poor">Poor</option>
+            <option value="Damaged">Damaged</option>
+            <option value="Needs Review">Needs Review</option>
+        </select>
+    </div>
+
+    <br />
+
+    <div>
+        <label>Storage Location</label><br />
+        <input asp-for="ReceivingLot.StorageLocation" style="width:350px;" />
+    </div>
+
+    <br />
+
+    <div>
+        <label>Barcode</label><br />
+        <input asp-for="ReceivingLot.BarcodeValue" style="width:350px;" />
+    </div>
+
+    <br />
+
+    <div>
+        <label>Invoice Number</label><br />
+        <input asp-for="ReceivingLot.InvoiceNumber" style="width:350px;" />
+    </div>
+
+    <br />
+
+    <div>
+        <label>Total Price</label><br />
+        <input asp-for="ReceivingLot.PriceTotal" type="number" step="0.01" style="width:200px;" />
+    </div>
+
+    <br />
+
+    <div>
+        <label>Notes</label><br />
+        <textarea asp-for="ReceivingLot.Notes" rows="4" style="width:600px;"></textarea>
+    </div>
+
+    <br />
+
+    <button type="submit">Save Standard Details</button>
+</form>
+
+<hr />
+
+<h2>Custom Details</h2>
+
+<p>Add any extra detail you want to track for this received lot.</p>
+
+<form method="post" asp-page-handler="AddCustomField">
+    <input type="hidden" asp-for="ReceivingLot.Id" />
+    <input type="hidden" asp-for="FarmId" />
+
+    <input asp-for="NewCustomField.FieldName"
+           list="commonFieldNames"
+           placeholder="Field name: Cultivar, Breed, Size, Brix..."
+           style="width:280px;"
+           required />
+
+    <input asp-for="NewCustomField.FieldValue"
+           placeholder="Value: Honeycrisp, Holstein, Large, 12.8..."
+           style="width:320px;"
+           required />
+
+    <button type="submit">Add Detail</button>
+
+    <datalist id="commonFieldNames">
+        <option value="Cultivar"></option>
+        <option value="Variety"></option>
+        <option value="Breed"></option>
+        <option value="Size"></option>
+        <option value="Grade"></option>
+        <option value="Temperature"></option>
+        <option value="Brix"></option>
+        <option value="pH"></option>
+        <option value="Acidity"></option>
+        <option value="Colour"></option>
+        <option value="Root Size"></option>
+        <option value="Harvest Location"></option>
+        <option value="Best Before"></option>
+        <option value="Lot Code"></option>
+    </datalist>
+</form>
+
+<br />
+
+<table border="1" cellpadding="8" cellspacing="0" style="width:100%; border-collapse:collapse;">
+    <thead>
+        <tr>
+            <th>Field</th>
+            <th>Value</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (!Model.CustomFields.Any())
+        {
+            <tr>
+                <td colspan="3">No custom details added yet.</td>
+            </tr>
+        }
+        else
+        {
+            @foreach (var field in Model.CustomFields)
+            {
+                <tr>
+                    <td>@field.FieldName</td>
+                    <td>@field.FieldValue</td>
+                    <td>
+                        <form method="post" asp-page-handler="DeleteCustomField"
+                              onsubmit="return confirm('Delete this detail?');">
+                            <input type="hidden" name="fieldId" value="@field.Id" />
+                            <input type="hidden" name="lotId" value="@Model.ReceivingLot.Id" />
+                            <input type="hidden" name="farmId" value="@Model.FarmId" />
+                            <button type="submit">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>

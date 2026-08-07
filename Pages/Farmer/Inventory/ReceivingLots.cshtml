@@ -1,5 +1,6 @@
 ﻿@page
 @model Agriloco1.Pages.Farmer.Inventory.ReceivingLotsModel
+@using System.Text.Json
 
 <h1>Receiving Lots</h1>
 
@@ -14,6 +15,13 @@
     <a href="/Farmer/Inventory/ReceivingLots?farmId=@Model.FarmId">Clear</a>
 </form>
 
+@if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+{
+    <div style="padding:10px; margin-bottom:15px; border:1px solid red; color:red;">
+        @Model.ErrorMessage
+    </div>
+}
+
 <h2>New Receiving Lot</h2>
 
 <form method="post" asp-page-handler="Create" style="margin-bottom:30px;">
@@ -24,27 +32,61 @@
         <input asp-for="NewReceiving.ReceivedDate" type="date" required />
     </div>
 
-    <div>
-        <label>Supplier</label><br />
-        <select asp-for="NewReceiving.SupplierId" required>
-            <option value="">-- Select supplier --</option>
-            @foreach (var supplier in Model.SupplierOptions)
-            {
-                <option value="@supplier.Id">@supplier.Name</option>
-            }
-        </select>
-    </div>
+    <br />
 
     <div>
-        <label>Item / Variation</label><br />
-        <select asp-for="NewReceiving.InventoryItemPackageId" required>
-            <option value="">-- Select item variation --</option>
-            @foreach (var variation in Model.ItemVariationOptions)
+        <label>Supplier</label><br />
+        <input asp-for="NewReceiving.SupplierSearch"
+               list="supplierList"
+               placeholder="Start typing supplier..."
+               style="width:450px;"
+               required />
+
+        <datalist id="supplierList">
+            @foreach (var supplier in Model.SupplierOptions)
             {
-                <option value="@variation.PackageId">@variation.DisplayName</option>
+                <option value="@supplier.Id | @supplier.Name"></option>
             }
-        </select>
+        </datalist>
     </div>
+
+    <br />
+
+    <div>
+        <label>Item</label><br />
+        <input asp-for="NewReceiving.ItemSearch"
+               id="itemSearchBox"
+               list="itemList"
+               placeholder="Start typing item..."
+               style="width:500px;"
+               required />
+
+        <datalist id="itemList">
+            @foreach (var item in Model.InventoryItemOptions)
+            {
+                <option value="@item.ItemId | @item.DisplayName"></option>
+            }
+        </datalist>
+    </div>
+
+    <br />
+
+    <div>
+        <label>Item Variation / Package <small>(optional)</small></label><br />
+        <input asp-for="NewReceiving.ItemVariationSearch"
+               id="variationSearchBox"
+               list="itemVariationList"
+               placeholder="Optional: select package variation..."
+               style="width:600px;" />
+
+        <datalist id="itemVariationList">
+        </datalist>
+
+        <br />
+        <small>If no variation is selected, the quantity is received directly in the item’s base unit.</small>
+    </div>
+
+    <br />
 
     <div>
         <label>Number of Units Received</label><br />
@@ -66,6 +108,7 @@
             <th>Supplier</th>
             <th>Item</th>
             <th>Variation</th>
+            <th>Specifications</th>
             <th>Units Received</th>
             <th>Usable Per Unit</th>
             <th>Total Usable</th>
@@ -78,7 +121,7 @@
         @if (!Model.ReceivingLots.Any())
         {
             <tr>
-                <td colspan="11">No receiving lots found.</td>
+                <td colspan="12">No receiving lots found.</td>
             </tr>
         }
         else
@@ -91,6 +134,18 @@
                     <td>@lot.SupplierName</td>
                     <td>@lot.InventoryItemName</td>
                     <td>@lot.VariationName</td>
+
+                    <td>
+                        @if (Model.CustomDetailsByLotId.ContainsKey(lot.Id))
+                        {
+                            @Html.Raw(Model.CustomDetailsByLotId[lot.Id])
+                        }
+                        else
+                        {
+                            <span>-</span>
+                        }
+                    </td>
+
                     <td>@lot.UnitsReceived</td>
                     <td>@lot.UsableQuantityPerUnit @lot.UsableUnit</td>
                     <td><strong>@lot.TotalUsableQuantity @lot.UsableUnit</strong></td>
@@ -111,3 +166,44 @@
         }
     </tbody>
 </table>
+
+<script>
+    const allVariations = @Html.Raw(JsonSerializer.Serialize(
+                Model.ItemVariationOptions.Select(v => new
+                {
+                        itemId = v.ItemId,
+                        value = $"{v.PackageId} | {v.DisplayName}"
+                })
+        ));
+
+    function getLeadingId(value) {
+        if (!value || !value.includes("|")) return null;
+        const firstPart = value.split("|")[0].trim();
+        const parsed = parseInt(firstPart);
+        return Number.isNaN(parsed) ? null : parsed;
+    }
+
+    function refreshVariationList() {
+        const itemBox = document.getElementById("itemSearchBox");
+        const variationBox = document.getElementById("variationSearchBox");
+        const variationList = document.getElementById("itemVariationList");
+
+        const itemId = getLeadingId(itemBox.value);
+
+        variationBox.value = "";
+        variationList.innerHTML = "";
+
+        if (!itemId) return;
+
+        const filtered = allVariations.filter(v => v.itemId === itemId);
+
+        filtered.forEach(v => {
+            const option = document.createElement("option");
+            option.value = v.value;
+            variationList.appendChild(option);
+        });
+    }
+
+    document.getElementById("itemSearchBox").addEventListener("change", refreshVariationList);
+    document.getElementById("itemSearchBox").addEventListener("input", refreshVariationList);
+</script>

@@ -26,7 +26,90 @@ namespace Agriloco1.Pages.Farmer.Inventory
 
         public List<ItemVariationRow> ItemVariationRows { get; set; } = new();
 
+        public string? ErrorMessage { get; set; }
+
         public async Task OnGetAsync()
+        {
+            await LoadRowsAsync();
+        }
+
+        public async Task<IActionResult> OnPostCreateAsync()
+        {
+            var requestedName = NewItem.ItemName.Trim();
+            var requestedKey = NormalizeName(requestedName);
+
+            var existingItems = await _db.InventoryItems
+                .Where(x => x.FarmId == FarmId)
+                .ToListAsync();
+
+            var duplicate = existingItems.FirstOrDefault(x =>
+                NormalizeName(x.ItemName) == requestedKey);
+
+            if (duplicate != null)
+            {
+                ErrorMessage = $"'{requestedName}' looks like a duplicate of existing item '{duplicate.ItemName}'.";
+                await LoadRowsAsync();
+                return Page();
+            }
+
+            var item = new InventoryItem
+            {
+                FarmId = FarmId,
+                ItemName = requestedName,
+                ItemCategory = NewItem.ItemCategory,
+                BaseUnit = NewItem.BaseUnit,
+                DefaultStorageLocation = "",
+                ShelfLife = "",
+                Notes = "",
+                BarcodeValue = "",
+                IsActive = true,
+                CreatedAt = DateTime.Now
+            };
+
+            _db.InventoryItems.Add(item);
+            await _db.SaveChangesAsync();
+
+            return RedirectToPage(new { farmId = FarmId });
+        }
+
+        public async Task<IActionResult> OnPostToggleActiveAsync(int id, int farmId)
+        {
+            FarmId = farmId;
+
+            var item = await _db.InventoryItems
+                .FirstOrDefaultAsync(x => x.Id == id && x.FarmId == FarmId);
+
+            if (item != null)
+            {
+                item.IsActive = !item.IsActive;
+                await _db.SaveChangesAsync();
+            }
+
+            return RedirectToPage(new { farmId = FarmId });
+        }
+
+        public async Task<IActionResult> OnPostDeleteAsync(int id, int farmId)
+        {
+            FarmId = farmId;
+
+            var item = await _db.InventoryItems
+                .FirstOrDefaultAsync(x => x.Id == id && x.FarmId == FarmId);
+
+            if (item != null)
+            {
+                var packages = await _db.InventoryItemPackages
+                    .Where(x => x.InventoryItemId == id && x.FarmId == FarmId)
+                    .ToListAsync();
+
+                _db.InventoryItemPackages.RemoveRange(packages);
+                _db.InventoryItems.Remove(item);
+                await _db.SaveChangesAsync();
+            }
+
+            return RedirectToPage(new { farmId = FarmId });
+        }
+
+        private async Task LoadRowsAsync()
         {
             var items = await _db.InventoryItems
                 .Where(x => x.FarmId == FarmId)
@@ -100,69 +183,24 @@ namespace Agriloco1.Pages.Farmer.Inventory
             ItemVariationRows = rows;
         }
 
-        public async Task<IActionResult> OnPostCreateAsync()
+        private static string NormalizeName(string value)
         {
-            if (!ModelState.IsValid)
+            var text = value.Trim().ToLowerInvariant();
+
+            text = new string(text
+                .Where(char.IsLetterOrDigit)
+                .ToArray());
+
+            if (text.EndsWith("ies") && text.Length > 3)
             {
-                await OnGetAsync();
-                return Page();
+                text = text.Substring(0, text.Length - 3) + "y";
+            }
+            else if (text.EndsWith("s") && text.Length > 1)
+            {
+                text = text.Substring(0, text.Length - 1);
             }
 
-            var item = new InventoryItem
-            {
-                FarmId = FarmId,
-                ItemName = NewItem.ItemName.Trim(),
-                ItemCategory = NewItem.ItemCategory,
-                BaseUnit = NewItem.BaseUnit,
-                DefaultStorageLocation = "",
-                ShelfLife = "",
-                Notes = "",
-                BarcodeValue = "",
-                IsActive = true,
-                CreatedAt = DateTime.Now
-            };
-
-            _db.InventoryItems.Add(item);
-            await _db.SaveChangesAsync();
-
-            return RedirectToPage(new { farmId = FarmId });
-        }
-
-        public async Task<IActionResult> OnPostToggleActiveAsync(int id, int farmId)
-        {
-            FarmId = farmId;
-
-            var item = await _db.InventoryItems
-                .FirstOrDefaultAsync(x => x.Id == id && x.FarmId == FarmId);
-
-            if (item != null)
-            {
-                item.IsActive = !item.IsActive;
-                await _db.SaveChangesAsync();
-            }
-
-            return RedirectToPage(new { farmId = FarmId });
-        }
-
-        public async Task<IActionResult> OnPostDeleteAsync(int id, int farmId)
-        {
-            FarmId = farmId;
-
-            var item = await _db.InventoryItems
-                .FirstOrDefaultAsync(x => x.Id == id && x.FarmId == FarmId);
-
-            if (item != null)
-            {
-                var packages = await _db.InventoryItemPackages
-                    .Where(x => x.InventoryItemId == id && x.FarmId == FarmId)
-                    .ToListAsync();
-
-                _db.InventoryItemPackages.RemoveRange(packages);
-                _db.InventoryItems.Remove(item);
-                await _db.SaveChangesAsync();
-            }
-
-            return RedirectToPage(new { farmId = FarmId });
+            return text;
         }
 
         public class NewInventoryItemInput
