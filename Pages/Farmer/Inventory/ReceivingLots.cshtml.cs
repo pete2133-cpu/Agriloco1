@@ -3,6 +3,7 @@ using Agriloco1.Models.Inventory;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
+using System.Net;
 
 namespace Agriloco1.Pages.Farmer.Inventory
 {
@@ -27,7 +28,12 @@ namespace Agriloco1.Pages.Farmer.Inventory
         public List<ReceivingLot> ReceivingLots { get; set; } = new();
 
         public List<SupplierOption> SupplierOptions { get; set; } = new();
+        public List<InventoryItemOption> InventoryItemOptions { get; set; } = new();
         public List<ItemVariationOption> ItemVariationOptions { get; set; } = new();
+
+        public Dictionary<int, string> CustomDetailsByLotId { get; set; } = new();
+
+        public string? ErrorMessage { get; set; }
 
         public async Task OnGetAsync()
         {
@@ -53,40 +59,84 @@ namespace Agriloco1.Pages.Farmer.Inventory
                 .OrderByDescending(x => x.ReceivedDate)
                 .ThenByDescending(x => x.Id)
                 .ToListAsync();
+
+            await LoadCustomDetailsAsync();
         }
 
         public async Task<IActionResult> OnPostCreateAsync()
         {
-            if (NewReceiving.SupplierId == null ||
-                NewReceiving.InventoryItemPackageId == null ||
+            var supplierId = ExtractLeadingId(NewReceiving.SupplierSearch);
+            var itemId = ExtractLeadingId(NewReceiving.ItemSearch);
+            var packageId = ExtractLeadingId(NewReceiving.ItemVariationSearch);
+
+            if (supplierId == null ||
+                itemId == null ||
                 NewReceiving.UnitsReceived <= 0)
             {
+                ErrorMessage = "Please select a valid supplier, item, and quantity.";
                 await OnGetAsync();
                 return Page();
             }
 
             var supplier = await _db.Suppliers
-                .FirstOrDefaultAsync(x => x.Id == NewReceiving.SupplierId && x.FarmId == FarmId);
-
-            var package = await _db.InventoryItemPackages
-                .FirstOrDefaultAsync(x => x.Id == NewReceiving.InventoryItemPackageId && x.FarmId == FarmId);
-
-            if (supplier == null || package == null)
-            {
-                await OnGetAsync();
-                return Page();
-            }
+                .FirstOrDefaultAsync(x => x.Id == supplierId && x.FarmId == FarmId);
 
             var item = await _db.InventoryItems
-                .FirstOrDefaultAsync(x => x.Id == package.InventoryItemId && x.FarmId == FarmId);
+                .FirstOrDefaultAsync(x => x.Id == itemId && x.FarmId == FarmId);
 
-            if (item == null)
+            if (supplier == null || item == null)
             {
+                ErrorMessage = "The selected supplier or item could not be found.";
                 await OnGetAsync();
                 return Page();
             }
 
-            var totalUsable = NewReceiving.UnitsReceived * package.PackageQuantity;
+            InventoryItemPackage? package = null;
+
+            if (packageId != null)
+            {
+                package = await _db.InventoryItemPackages
+                    .FirstOrDefaultAsync(x =>
+                        x.Id == packageId &&
+                        x.FarmId == FarmId &&
+                        x.InventoryItemId == item.Id);
+
+                if (package == null)
+                {
+                    ErrorMessage = "The selected variation does not belong to the selected item.";
+                    await OnGetAsync();
+                    return Page();
+                }
+            }
+
+            decimal usableQuantityPerUnit;
+            string usableUnit;
+            decimal totalUsable;
+            string variationName;
+            string packageType;
+            string storageLocation;
+            string barcodeValue;
+
+            if (package != null)
+            {
+                usableQuantityPerUnit = package.PackageQuantity;
+                usableUnit = package.PackageUnit;
+                totalUsable = NewReceiving.UnitsReceived * package.PackageQuantity;
+                variationName = package.PackageName;
+                packageType = package.PackageType;
+                storageLocation = package.StorageLocation;
+                barcodeValue = package.BarcodeValue;
+            }
+            else
+            {
+                usableQuantityPerUnit = 1;
+                usableUnit = item.BaseUnit;
+                totalUsable = NewReceiving.UnitsReceived;
+                variationName = "Base Item";
+                packageType = "Simple";
+                storageLocation = item.DefaultStorageLocation;
+                barcodeValue = item.BarcodeValue;
+            }
 
             var lot = new ReceivingLot
             {
@@ -100,24 +150,24 @@ namespace Agriloco1.Pages.Farmer.Inventory
                 InventoryItemId = item.Id,
                 InventoryItemName = item.ItemName,
 
-                InventoryItemPackageId = package.Id,
-                VariationName = package.PackageName,
-                PackageType = package.PackageType,
+                InventoryItemPackageId = package?.Id,
+                VariationName = variationName,
+                PackageType = packageType,
 
                 UnitsReceived = NewReceiving.UnitsReceived,
-                UsableQuantityPerUnit = package.PackageQuantity,
-                UsableUnit = package.PackageUnit,
+                UsableQuantityPerUnit = usableQuantityPerUnit,
+                UsableUnit = usableUnit,
                 TotalUsableQuantity = totalUsable,
 
                 ItemName = item.ItemName,
                 Quantity = totalUsable,
-                Unit = package.PackageUnit,
+                Unit = usableUnit,
 
                 Status = "Received",
                 Condition = "Good",
 
-                StorageLocation = package.StorageLocation,
-                BarcodeValue = package.BarcodeValue,
+                StorageLocation = storageLocation,
+                BarcodeValue = barcodeValue,
 
                 InvoiceNumber = "",
                 PriceTotal = null,
@@ -149,6 +199,11 @@ namespace Agriloco1.Pages.Farmer.Inventory
 
             if (lot != null)
             {
+                var fields = await _db.ReceivingLotCustomFields
+                    .Where(x => x.ReceivingLotId == lot.Id && x.FarmId == FarmId)
+                    .ToListAsync();
+
+                _db.ReceivingLotCustomFields.RemoveRange(fields);
                 _db.ReceivingLots.Remove(lot);
                 await _db.SaveChangesAsync();
             }
@@ -170,7 +225,16 @@ namespace Agriloco1.Pages.Farmer.Inventory
 
             var items = await _db.InventoryItems
                 .Where(x => x.FarmId == FarmId && x.IsActive)
+                .OrderBy(x => x.ItemName)
                 .ToListAsync();
+
+            InventoryItemOptions = items
+                .Select(x => new InventoryItemOption
+                {
+                    ItemId = x.Id,
+                    DisplayName = $"{x.ItemName} ({x.BaseUnit})"
+                })
+                .ToList();
 
             var packages = await _db.InventoryItemPackages
                 .Where(x => x.FarmId == FarmId && x.IsActive)
@@ -184,6 +248,7 @@ namespace Agriloco1.Pages.Farmer.Inventory
                     item => item.Id,
                     (package, item) => new ItemVariationOption
                     {
+                        ItemId = item.Id,
                         PackageId = package.Id,
                         DisplayName = $"{item.ItemName} - {package.PackageName} ({package.PackageQuantity} {package.PackageUnit} each)"
                     })
@@ -191,11 +256,52 @@ namespace Agriloco1.Pages.Farmer.Inventory
                 .ToList();
         }
 
+        private async Task LoadCustomDetailsAsync()
+        {
+            CustomDetailsByLotId = new Dictionary<int, string>();
+
+            var lotIds = ReceivingLots.Select(x => x.Id).ToList();
+
+            if (!lotIds.Any())
+            {
+                return;
+            }
+
+            var fields = await _db.ReceivingLotCustomFields
+                .Where(x => x.FarmId == FarmId && lotIds.Contains(x.ReceivingLotId))
+                .OrderBy(x => x.FieldName)
+                .ThenBy(x => x.Id)
+                .ToListAsync();
+
+            CustomDetailsByLotId = fields
+                .GroupBy(x => x.ReceivingLotId)
+                .ToDictionary(
+                    group => group.Key,
+                    group => string.Join("<br />", group.Select(field =>
+                        $"<strong>{WebUtility.HtmlEncode(field.FieldName)}:</strong> {WebUtility.HtmlEncode(field.FieldValue)}"
+                    ))
+                );
+        }
+
+        private static int? ExtractLeadingId(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return null;
+
+            var firstPart = value.Split('|')[0].Trim();
+
+            if (int.TryParse(firstPart, out var id))
+                return id;
+
+            return null;
+        }
+
         public class NewReceivingInput
         {
             public DateTime ReceivedDate { get; set; } = DateTime.Today;
-            public int? SupplierId { get; set; }
-            public int? InventoryItemPackageId { get; set; }
+            public string SupplierSearch { get; set; } = "";
+            public string ItemSearch { get; set; } = "";
+            public string ItemVariationSearch { get; set; } = "";
             public decimal UnitsReceived { get; set; }
         }
 
@@ -205,8 +311,15 @@ namespace Agriloco1.Pages.Farmer.Inventory
             public string Name { get; set; } = "";
         }
 
+        public class InventoryItemOption
+        {
+            public int ItemId { get; set; }
+            public string DisplayName { get; set; } = "";
+        }
+
         public class ItemVariationOption
         {
+            public int ItemId { get; set; }
             public int PackageId { get; set; }
             public string DisplayName { get; set; } = "";
         }

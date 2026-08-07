@@ -1,4 +1,208 @@
 ﻿@page
 @model Agriloco1.Pages.Farmer.Inventory.ProductionRunsModel
-@{
+
+<h1>Production Runs</h1>
+
+<p>
+    Create a batch from an existing recipe. Recipe ingredients are copied into
+    the batch so future recipe edits do not change historical production records.
+</p>
+
+<p><strong>Current Farm ID:</strong> @Model.FarmId</p>
+
+<form method="get" style="margin-bottom:20px;">
+    <input type="hidden" name="FarmId" value="@Model.FarmId" />
+
+    <input type="text"
+           name="SearchTerm"
+           value="@Model.SearchTerm"
+           placeholder="Search batch, recipe, process, status..."
+           style="width:400px;" />
+
+    <button type="submit">Search</button>
+
+    <a href="/Farmer/Inventory/ProductionRuns?farmId=@Model.FarmId">
+        Clear
+    </a>
+</form>
+
+@if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+{
+    <div style="padding:10px; margin-bottom:15px; border:1px solid red; color:red;">
+        @Model.ErrorMessage
+    </div>
 }
+
+<h2>Create Production Run</h2>
+
+<form method="post" asp-page-handler="Create" style="margin-bottom:30px;">
+    <input type="hidden" asp-for="FarmId" />
+
+    <div>
+        <label>Recipe</label><br />
+
+        <select asp-for="NewRun.RecipeId"
+                style="width:450px;"
+                required>
+
+            <option value="">-- Select recipe --</option>
+
+            @foreach (var recipe in Model.RecipeOptions)
+            {
+                <option value="@recipe.Id">
+                    @recipe.Name
+                </option>
+            }
+        </select>
+    </div>
+
+    <br />
+
+    <div>
+        <label>Production Date</label><br />
+
+        <input asp-for="NewRun.ProductionDate"
+               type="date"
+               required />
+    </div>
+
+    <br />
+
+    <div>
+        <label>Primary Process Type</label><br />
+
+        <select asp-for="NewRun.ProcessType"
+                style="width:350px;">
+
+            <option value="Cooking">Cooking</option>
+            <option value="Fermentation">Fermentation</option>
+            <option value="Aging">Aging</option>
+            <option value="Juicing">Juicing</option>
+            <option value="Pressing">Pressing</option>
+            <option value="Steaming">Steaming</option>
+            <option value="Filtering">Filtering</option>
+            <option value="Pasteurizing">Pasteurizing</option>
+            <option value="Freezing">Freezing</option>
+            <option value="Drying">Drying</option>
+            <option value="Freeze Drying">Freeze Drying</option>
+            <option value="Blending">Blending</option>
+            <option value="Cutting / Preparation">Cutting / Preparation</option>
+            <option value="Butchering">Butchering</option>
+            <option value="Packaging">Packaging</option>
+            <option value="Other Food Processing">Other Food Processing</option>
+        </select>
+    </div>
+
+    <br />
+
+    <button type="submit">Create Production Run</button>
+</form>
+
+<h2>Production Run List</h2>
+
+<table border="1"
+       cellpadding="8"
+       cellspacing="0"
+       style="width:100%; border-collapse:collapse;">
+
+    <thead>
+        <tr>
+            <th>Batch Number</th>
+            <th>Date</th>
+            <th>Recipe</th>
+            <th>Process</th>
+            <th>Status</th>
+            <th>Scale</th>
+            <th>Expected Yield</th>
+            <th>Actual Yield</th>
+            <th>Ingredients Committed</th>
+            <th>Updated</th>
+            <th>Details</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        @if (!Model.ProductionRuns.Any())
+        {
+            <tr>
+                <td colspan="11">No production runs found.</td>
+            </tr>
+        }
+        else
+        {
+            @foreach (var run in Model.ProductionRuns)
+            {
+                <tr>
+                    <td>@run.BatchNumber</td>
+
+                    <td>@run.ProductionDate.ToString("yyyy-MM-dd")</td>
+
+                    <td>@run.RecipeName</td>
+
+                    <td>@run.ProcessType</td>
+
+                    <td>@run.Status</td>
+
+                    <td>
+                        @(run.ScaleFactor.HasValue
+                            ? run.ScaleFactor.Value.ToString("0.###") + "×"
+                            : "-")
+                    </td>
+
+                    <td>
+                        @if (run.ExpectedYieldQuantity.HasValue)
+                        {
+                            <span>
+                                @run.ExpectedYieldQuantity
+                                @run.ExpectedYieldUnit
+                            </span>
+                        }
+                        else
+                        {
+                            <span>-</span>
+                        }
+                    </td>
+
+                    <td>
+                        @if (run.ActualYieldQuantity.HasValue)
+                        {
+                            <span>
+                                @run.ActualYieldQuantity
+                                @run.ActualYieldUnit
+                            </span>
+                        }
+                        else
+                        {
+                            <span>-</span>
+                        }
+                    </td>
+
+                    <td>@(run.IngredientsCommitted ? "Yes" : "No")</td>
+
+                    <td>@run.UpdatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+
+                    <td>
+                        <a href="/Farmer/Inventory/ProductionRunDetails?id=@run.Id&farmId=@Model.FarmId">
+                            Add +
+                        </a>
+
+                        @if (!run.IngredientsCommitted &&
+                             run.Status == "Draft")
+                        {
+                            <form method="post"
+                                  asp-page-handler="Delete"
+                                  style="display:inline; margin-left:8px;"
+                                  onsubmit="return confirm('Delete this draft production run?');">
+
+                                <input type="hidden" name="id" value="@run.Id" />
+                                <input type="hidden" name="farmId" value="@Model.FarmId" />
+
+                                <button type="submit">Delete</button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>

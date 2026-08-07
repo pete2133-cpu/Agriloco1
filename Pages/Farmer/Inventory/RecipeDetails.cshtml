@@ -1,0 +1,507 @@
+﻿@page
+@model Agriloco1.Pages.Farmer.Inventory.RecipeDetailsModel
+@using System.Text.Json
+
+<h1>Recipe Details</h1>
+
+<p>
+    <a href="/Farmer/Inventory/Recipes?farmId=@Model.FarmId">
+        ← Back to Recipes
+    </a>
+</p>
+
+@if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+{
+    <div style="padding:10px; margin-bottom:15px; border:1px solid red; color:red;">
+        @Model.ErrorMessage
+    </div>
+}
+
+@if (!string.IsNullOrWhiteSpace(Model.SuccessMessage))
+{
+    <div style="padding:10px; margin-bottom:15px; border:1px solid green; color:green;">
+        @Model.SuccessMessage
+    </div>
+}
+
+<form method="post" asp-page-handler="SaveRecipe">
+    <input type="hidden" asp-for="Recipe.Id" />
+    <input type="hidden" asp-for="FarmId" />
+
+    <h2>Recipe Definition</h2>
+
+    <div>
+        <label>Recipe Name</label><br />
+
+        <input asp-for="Recipe.RecipeName"
+               style="width:400px;"
+               required />
+    </div>
+
+    <br />
+
+    <div>
+        <label>Recipe Category</label><br />
+
+        <select asp-for="Recipe.RecipeCategory" style="width:300px;">
+            <option value="Jam">Jam</option>
+            <option value="Jelly">Jelly</option>
+            <option value="Sauce">Sauce</option>
+            <option value="Salsa">Salsa</option>
+            <option value="Syrup">Syrup</option>
+            <option value="Juice">Juice</option>
+            <option value="Beverage">Beverage</option>
+            <option value="Vinegar">Vinegar</option>
+            <option value="Fermented Product">Fermented Product</option>
+            <option value="Frozen Product">Frozen Product</option>
+            <option value="Prepared Ingredient">Prepared Ingredient</option>
+            <option value="Baked Product">Baked Product</option>
+            <option value="Meal">Meal</option>
+            <option value="Other">Other</option>
+        </select>
+    </div>
+
+    <br />
+
+    <div>
+        <label>Expected Yield Quantity</label><br />
+
+        <input asp-for="Recipe.ExpectedYieldQuantity"
+               type="number"
+               step="0.01"
+               style="width:200px;" />
+    </div>
+
+    <br />
+
+    <div>
+        <label>Expected Yield Unit</label><br />
+
+        <input asp-for="Recipe.ExpectedYieldUnit"
+               list="yieldUnitList"
+               placeholder="jars, kg, L, units..."
+               style="width:250px;" />
+
+        <datalist id="yieldUnitList">
+            <option value="units"></option>
+            <option value="jars"></option>
+            <option value="bottles"></option>
+            <option value="cases"></option>
+            <option value="kg"></option>
+            <option value="g"></option>
+            <option value="lbs"></option>
+            <option value="oz"></option>
+            <option value="L"></option>
+            <option value="mL"></option>
+            <option value="batches"></option>
+        </datalist>
+    </div>
+
+    <br />
+
+    <div>
+        <label>Status</label><br />
+
+        <select asp-for="Recipe.Status" style="width:250px;">
+            <option value="Draft">Draft</option>
+            <option value="Testing">Testing</option>
+            <option value="Approved">Approved</option>
+            <option value="Inactive">Inactive</option>
+            <option value="Archived">Archived</option>
+        </select>
+    </div>
+
+    <br />
+
+    <div>
+        <label>Recipe Notes / Instructions</label><br />
+
+        <textarea asp-for="Recipe.Notes"
+                  rows="8"
+                  style="width:700px;"
+                  placeholder="Add preparation steps, temperatures, timing, processing instructions, warnings, or other notes."></textarea>
+    </div>
+
+    <br />
+
+    <div>
+        <label>Active</label><br />
+
+        <select asp-for="Recipe.IsActive" style="width:200px;">
+            <option value="true">Yes</option>
+            <option value="false">No</option>
+        </select>
+    </div>
+
+    <br />
+
+    <button type="submit">Save Recipe Definition</button>
+</form>
+
+<hr />
+
+<h2>Add Ingredient</h2>
+
+<p>
+    Select an existing inventory item when available, or type a new ingredient name.
+    Recipes can include items that have never been received, such as water or salt.
+</p>
+
+<form method="post" asp-page-handler="AddIngredient" style="margin-bottom:30px;">
+    <input type="hidden" asp-for="Recipe.Id" />
+    <input type="hidden" asp-for="FarmId" />
+
+    <div>
+        <label>Existing Inventory Item <small>(optional)</small></label><br />
+
+        <input asp-for="NewIngredient.ItemSearch"
+               id="itemSearchBox"
+               list="inventoryItemList"
+               placeholder="Start typing an existing inventory item..."
+               style="width:500px;" />
+
+        <datalist id="inventoryItemList">
+            @foreach (var item in Model.InventoryItemOptions)
+            {
+                <option value="@item.ItemId | @item.DisplayName"></option>
+            }
+        </datalist>
+    </div>
+
+    <br />
+
+    <div>
+        <label>Item Variation <small>(optional)</small></label><br />
+
+        <input asp-for="NewIngredient.VariationSearch"
+               id="variationSearchBox"
+               list="variationList"
+               placeholder="Optional item variation..."
+               style="width:600px;" />
+
+        <datalist id="variationList">
+        </datalist>
+    </div>
+
+    <br />
+
+    <div>
+        <label>Ingredient Name</label><br />
+
+        <input asp-for="NewIngredient.IngredientName"
+               id="ingredientNameBox"
+               placeholder="Water, Salt, Strawberries, Sugar..."
+               style="width:450px;"
+               required />
+
+        <br />
+        <small>
+            This can be free text. Selecting an inventory item will fill this automatically.
+        </small>
+    </div>
+
+    <br />
+
+    <div>
+        <label>Quantity</label><br />
+
+        <input asp-for="NewIngredient.Quantity"
+               type="number"
+               step="0.001"
+               style="width:200px;"
+               required />
+    </div>
+
+    <br />
+
+    <div>
+        <label>Unit</label><br />
+
+        <input asp-for="NewIngredient.Unit"
+               id="ingredientUnitBox"
+               list="ingredientUnitList"
+               placeholder="kg, g, L, mL, units..."
+               style="width:250px;"
+               required />
+
+        <datalist id="ingredientUnitList">
+            <option value="kg"></option>
+            <option value="g"></option>
+            <option value="lbs"></option>
+            <option value="oz"></option>
+            <option value="L"></option>
+            <option value="mL"></option>
+            <option value="units"></option>
+            <option value="jars"></option>
+            <option value="bottles"></option>
+            <option value="bags"></option>
+            <option value="cases"></option>
+            <option value="tsp"></option>
+            <option value="tbsp"></option>
+            <option value="cups"></option>
+            <option value="pinch"></option>
+            <option value="percent"></option>
+        </datalist>
+    </div>
+
+    <br />
+
+    <div>
+        <label>Estimated Cost Per Unit <small>(optional)</small></label><br />
+
+        <input asp-for="NewIngredient.EstimatedUnitCost"
+               type="number"
+               step="0.0001"
+               style="width:200px;" />
+    </div>
+
+    <br />
+
+    <div>
+        <label>Ingredient Notes <small>(optional)</small></label><br />
+
+        <input asp-for="NewIngredient.Notes"
+               placeholder="Prepared, drained, peeled, optional, add last..."
+               style="width:600px;" />
+    </div>
+
+    <br />
+
+    <button type="submit">Add Ingredient</button>
+</form>
+
+<h2>Recipe Ingredients</h2>
+
+<table border="1"
+       cellpadding="8"
+       cellspacing="0"
+       style="width:100%; border-collapse:collapse;">
+
+    <thead>
+        <tr>
+            <th>Order</th>
+            <th>Ingredient</th>
+            <th>Variation</th>
+            <th>Quantity</th>
+            <th>Unit</th>
+            <th>Inventory Link</th>
+            <th>Estimated Unit Cost</th>
+            <th>Estimated Total</th>
+            <th>Notes</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        @if (!Model.Ingredients.Any())
+        {
+            <tr>
+                <td colspan="10">No ingredients have been added.</td>
+            </tr>
+        }
+        else
+        {
+            @foreach (var ingredient in Model.Ingredients)
+            {
+                <tr>
+                    <td>@ingredient.SortOrder</td>
+
+                    <td>@ingredient.IngredientName</td>
+
+                    <td>
+                        @(string.IsNullOrWhiteSpace(ingredient.VariationName)
+                            ? "-"
+                            : ingredient.VariationName)
+                    </td>
+
+                    <td>@ingredient.Quantity</td>
+
+                    <td>@ingredient.Unit</td>
+
+                    <td>
+                        @(ingredient.InventoryItemId.HasValue
+                            ? "Linked"
+                            : "Free Text")
+                    </td>
+
+                    <td>
+                        @if (ingredient.EstimatedUnitCost.HasValue)
+                        {
+                            <span>$@ingredient.EstimatedUnitCost.Value.ToString("0.####")</span>
+                        }
+                        else
+                        {
+                            <span>-</span>
+                        }
+                    </td>
+
+                    <td>
+                        @if (ingredient.EstimatedTotalCost.HasValue)
+                        {
+                            <strong>$@ingredient.EstimatedTotalCost.Value.ToString("0.00")</strong>
+                        }
+                        else
+                        {
+                            <span>-</span>
+                        }
+                    </td>
+
+                    <td>
+                        @(string.IsNullOrWhiteSpace(ingredient.Notes)
+                            ? "-"
+                            : ingredient.Notes)
+                    </td>
+
+                    <td>
+                        <form method="post"
+                              asp-page-handler="MoveIngredientUp"
+                              style="display:inline;">
+
+                            <input type="hidden" name="ingredientId" value="@ingredient.Id" />
+                            <input type="hidden" name="recipeId" value="@Model.Recipe.Id" />
+                            <input type="hidden" name="farmId" value="@Model.FarmId" />
+
+                            <button type="submit">↑</button>
+                        </form>
+
+                        <form method="post"
+                              asp-page-handler="MoveIngredientDown"
+                              style="display:inline; margin-left:4px;">
+
+                            <input type="hidden" name="ingredientId" value="@ingredient.Id" />
+                            <input type="hidden" name="recipeId" value="@Model.Recipe.Id" />
+                            <input type="hidden" name="farmId" value="@Model.FarmId" />
+
+                            <button type="submit">↓</button>
+                        </form>
+
+                        <form method="post"
+                              asp-page-handler="DeleteIngredient"
+                              style="display:inline; margin-left:8px;"
+                              onsubmit="return confirm('Delete this ingredient?');">
+
+                            <input type="hidden" name="ingredientId" value="@ingredient.Id" />
+                            <input type="hidden" name="recipeId" value="@Model.Recipe.Id" />
+                            <input type="hidden" name="farmId" value="@Model.FarmId" />
+
+                            <button type="submit">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
+
+@if (Model.TotalEstimatedRecipeCost.HasValue)
+{
+    <p style="margin-top:15px;">
+        <strong>
+            Total Estimated Ingredient Cost:
+            $@Model.TotalEstimatedRecipeCost.Value.ToString("0.00")
+        </strong>
+    </p>
+}
+
+<script>
+    const inventoryItems = @Html.Raw(JsonSerializer.Serialize(
+                Model.InventoryItemOptions.Select(item => new
+                {
+                        itemId = item.ItemId,
+                        value = $"{item.ItemId} | {item.DisplayName}",
+                        itemName = item.ItemName,
+                        baseUnit = item.BaseUnit
+                })
+        ));
+
+    const variations = @Html.Raw(JsonSerializer.Serialize(
+                Model.ItemVariationOptions.Select(variation => new
+                {
+                        itemId = variation.ItemId,
+                        packageId = variation.PackageId,
+                        value = $"{variation.PackageId} | {variation.DisplayName}",
+                        variationName = variation.VariationName,
+                        unit = variation.Unit
+                })
+        ));
+
+    function getLeadingId(value) {
+        if (!value || !value.includes("|")) {
+            return null;
+        }
+
+        const firstPart = value.split("|")[0].trim();
+        const parsed = parseInt(firstPart);
+
+        return Number.isNaN(parsed) ? null : parsed;
+    }
+
+    function refreshIngredientSelection() {
+        const itemBox = document.getElementById("itemSearchBox");
+        const variationBox = document.getElementById("variationSearchBox");
+        const variationList = document.getElementById("variationList");
+        const ingredientNameBox = document.getElementById("ingredientNameBox");
+        const ingredientUnitBox = document.getElementById("ingredientUnitBox");
+
+        const itemId = getLeadingId(itemBox.value);
+
+        variationList.innerHTML = "";
+
+        if (!itemId) {
+            return;
+        }
+
+        const selectedItem = inventoryItems.find(item => item.itemId === itemId);
+
+        if (selectedItem) {
+            ingredientNameBox.value = selectedItem.itemName;
+
+            if (!ingredientUnitBox.value) {
+                ingredientUnitBox.value = selectedItem.baseUnit;
+            }
+        }
+
+        variations
+            .filter(variation => variation.itemId === itemId)
+            .forEach(variation => {
+                const option = document.createElement("option");
+                option.value = variation.value;
+                variationList.appendChild(option);
+            });
+    }
+
+    function applyVariationSelection() {
+        const variationBox = document.getElementById("variationSearchBox");
+        const ingredientUnitBox = document.getElementById("ingredientUnitBox");
+
+        const packageId = getLeadingId(variationBox.value);
+
+        if (!packageId) {
+            return;
+        }
+
+        const selectedVariation = variations.find(
+            variation => variation.packageId === packageId
+        );
+
+        if (selectedVariation) {
+            ingredientUnitBox.value = selectedVariation.unit;
+        }
+    }
+
+    document
+        .getElementById("itemSearchBox")
+        .addEventListener("input", refreshIngredientSelection);
+
+    document
+        .getElementById("itemSearchBox")
+        .addEventListener("change", refreshIngredientSelection);
+
+    document
+        .getElementById("variationSearchBox")
+        .addEventListener("input", applyVariationSelection);
+
+    document
+        .getElementById("variationSearchBox")
+        .addEventListener("change", applyVariationSelection);
+</script>

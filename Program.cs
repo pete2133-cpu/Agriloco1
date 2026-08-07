@@ -171,8 +171,252 @@ using (var scope = app.Services.CreateScope())
     try { db.Database.ExecuteSqlRaw("ALTER TABLE InventoryItemPackages ADD COLUMN StorageLocation TEXT NOT NULL DEFAULT '';"); } catch { }
     try { db.Database.ExecuteSqlRaw("ALTER TABLE InventoryItemPackages ADD COLUMN BarcodeValue TEXT NOT NULL DEFAULT '';"); } catch { }
     try { db.Database.ExecuteSqlRaw("ALTER TABLE InventoryItemPackages ADD COLUMN ShelfLife TEXT NOT NULL DEFAULT '';"); } catch { }
+    // ✅ Recipes table for Inventory and Production
+    try
+    {
+        db.Database.ExecuteSqlRaw(@"
+    CREATE TABLE IF NOT EXISTS Recipes (
+        Id INTEGER NOT NULL CONSTRAINT PK_Recipes PRIMARY KEY AUTOINCREMENT,
+        FarmId INTEGER NULL,
+        RecipeName TEXT NOT NULL,
+        RecipeCategory TEXT NOT NULL,
+        ExpectedYieldQuantity REAL NULL,
+        ExpectedYieldUnit TEXT NOT NULL,
+        Status TEXT NOT NULL,
+        Notes TEXT NOT NULL,
+        IsActive INTEGER NOT NULL,
+        CreatedAt TEXT NOT NULL,
+        UpdatedAt TEXT NOT NULL
+    );
+");
+    }
+    catch
+    {
+        // ignore
+    }
+    // ✅ RecipeIngredients table for recipe building
+    try
+    {
+        db.Database.ExecuteSqlRaw(@"
+    CREATE TABLE IF NOT EXISTS RecipeIngredients (
+        Id INTEGER NOT NULL CONSTRAINT PK_RecipeIngredients PRIMARY KEY AUTOINCREMENT,
+        FarmId INTEGER NULL,
+        RecipeId INTEGER NOT NULL,
+        InventoryItemId INTEGER NULL,
+        InventoryItemPackageId INTEGER NULL,
+        IngredientName TEXT NOT NULL,
+        VariationName TEXT NOT NULL,
+        Quantity REAL NOT NULL,
+        Unit TEXT NOT NULL,
+        EstimatedUnitCost REAL NULL,
+        EstimatedTotalCost REAL NULL,
+        Notes TEXT NOT NULL,
+        SortOrder INTEGER NOT NULL,
+        CreatedAt TEXT NOT NULL
+    );
+");
+    }
+    catch
+    {
+        // ignore
+    }
+    // ✅ Inventory movement ledger
+    try
+    {
+        db.Database.ExecuteSqlRaw(@"
+    CREATE TABLE IF NOT EXISTS InventoryMovements (
+        Id INTEGER NOT NULL CONSTRAINT PK_InventoryMovements PRIMARY KEY AUTOINCREMENT,
+        FarmId INTEGER NULL,
+        InventoryItemId INTEGER NULL,
+        InventoryItemPackageId INTEGER NULL,
+        ReceivingLotId INTEGER NULL,
+        ProductionRunId INTEGER NULL,
+        ProductionRunIngredientId INTEGER NULL,
+        MovementType TEXT NOT NULL,
+        Quantity REAL NOT NULL,
+        Unit TEXT NOT NULL,
+        ReferenceNumber TEXT NOT NULL,
+        Notes TEXT NOT NULL,
+        OccurredAt TEXT NOT NULL,
+        CreatedAt TEXT NOT NULL
+    );
+");
+    }
+    catch
+    {
+        // ignore
+    }
+    // ✅ Production runs / batches
+    try
+    {
+        db.Database.ExecuteSqlRaw(@"
+    CREATE TABLE IF NOT EXISTS ProductionRuns (
+        Id INTEGER NOT NULL CONSTRAINT PK_ProductionRuns PRIMARY KEY AUTOINCREMENT,
+        FarmId INTEGER NULL,
+        RecipeId INTEGER NOT NULL,
+        RecipeName TEXT NOT NULL,
+        BatchNumber TEXT NOT NULL,
+        ProcessType TEXT NOT NULL,
+        Status TEXT NOT NULL,
+        ProductionDate TEXT NOT NULL,
+        StartedAt TEXT NULL,
+        EndedAt TEXT NULL,
+        ScaleFactor REAL NULL,
+        ScaleAnchorIngredientId INTEGER NULL,
+        ExpectedYieldQuantity REAL NULL,
+        ExpectedYieldUnit TEXT NOT NULL,
+        ActualYieldQuantity REAL NULL,
+        ActualYieldUnit TEXT NOT NULL,
+        OutputInventoryItemId INTEGER NULL,
+        OutputInventoryItemPackageId INTEGER NULL,
+        IngredientsCommitted INTEGER NOT NULL,
+        OutputPosted INTEGER NOT NULL,
+        InventoryReturned INTEGER NOT NULL,
+        Notes TEXT NOT NULL,
+        CreatedAt TEXT NOT NULL,
+        UpdatedAt TEXT NOT NULL
+    );
+");
+    }
+    catch
+    {
+        // ignore
+    }
+    // ✅ Production run ingredient snapshots
+    try
+    {
+        db.Database.ExecuteSqlRaw(@"
+    CREATE TABLE IF NOT EXISTS ProductionRunIngredients (
+        Id INTEGER NOT NULL CONSTRAINT PK_ProductionRunIngredients PRIMARY KEY AUTOINCREMENT,
+        FarmId INTEGER NULL,
+        ProductionRunId INTEGER NOT NULL,
+        RecipeIngredientId INTEGER NULL,
+        InventoryItemId INTEGER NULL,
+        InventoryItemPackageId INTEGER NULL,
+        IngredientName TEXT NOT NULL,
+        VariationName TEXT NOT NULL,
+        RecipeQuantity REAL NOT NULL,
+        Unit TEXT NOT NULL,
+        SuggestedQuantity REAL NULL,
+        ActualQuantity REAL NULL,
+        IsScaleAnchor INTEGER NOT NULL,
+        CommittedQuantity REAL NOT NULL,
+        Notes TEXT NOT NULL,
+        SortOrder INTEGER NOT NULL,
+        CreatedAt TEXT NOT NULL
+    );
+");
+    }
+    catch
+    {
+        // ignore
+    }
+    // ✅ Production labour/work events
+    try
+    {
+        db.Database.ExecuteSqlRaw(@"
+    CREATE TABLE IF NOT EXISTS ProductionWorkEntries (
+        Id INTEGER NOT NULL CONSTRAINT PK_ProductionWorkEntries PRIMARY KEY AUTOINCREMENT,
+        FarmId INTEGER NULL,
+        ProductionRunId INTEGER NOT NULL,
+        WorkType TEXT NOT NULL,
+        WorkDate TEXT NOT NULL,
+        StartedAt TEXT NULL,
+        EndedAt TEXT NULL,
+        DefaultHours REAL NOT NULL,
+        Notes TEXT NOT NULL,
+        CreatedAt TEXT NOT NULL
+    );
+");
+    }
+    catch
+    {
+        // ignore
+    }
+    // ✅ Workers attached to production labour events
+    try
+    {
+        db.Database.ExecuteSqlRaw(@"
+    CREATE TABLE IF NOT EXISTS ProductionWorkEntryWorkers (
+        Id INTEGER NOT NULL CONSTRAINT PK_ProductionWorkEntryWorkers PRIMARY KEY AUTOINCREMENT,
+        FarmId INTEGER NULL,
+        ProductionRunId INTEGER NOT NULL,
+        ProductionWorkEntryId INTEGER NOT NULL,
+        WorkerName TEXT NOT NULL,
+        HoursWorked REAL NOT NULL,
+        HourlyRate REAL NULL,
+        LabourCost REAL NULL,
+        CreatedAt TEXT NOT NULL
+    );
+");
+    }
+    catch
+    {
+        // ignore
+    }
+    // ✅ Production observations and batch checks
+    try
+    {
+        db.Database.ExecuteSqlRaw(@"
+    CREATE TABLE IF NOT EXISTS ProductionObservations (
+        Id INTEGER NOT NULL CONSTRAINT PK_ProductionObservations PRIMARY KEY AUTOINCREMENT,
+        FarmId INTEGER NULL,
+        ProductionRunId INTEGER NOT NULL,
+        ProductionWorkEntryId INTEGER NULL,
+        RecordedAt TEXT NOT NULL,
+        ObservationType TEXT NOT NULL,
+        Notes TEXT NOT NULL,
+        CreatedAt TEXT NOT NULL
+    );
+");
+    }
+    catch
+    {
+        // ignore
+    }
+    // ✅ Multiple measured values within one production observation
+    try
+    {
+        db.Database.ExecuteSqlRaw(@"
+    CREATE TABLE IF NOT EXISTS ProductionObservationValues (
+        Id INTEGER NOT NULL CONSTRAINT PK_ProductionObservationValues PRIMARY KEY AUTOINCREMENT,
+        FarmId INTEGER NULL,
+        ProductionRunId INTEGER NOT NULL,
+        ProductionObservationId INTEGER NOT NULL,
+        MeasurementName TEXT NOT NULL,
+        ValueText TEXT NOT NULL,
+        NumericValue REAL NULL,
+        Unit TEXT NOT NULL,
+        Notes TEXT NOT NULL,
+        SortOrder INTEGER NOT NULL,
+        CreatedAt TEXT NOT NULL
+    );
+");
+    }
+    catch
+    {
+        // ignore
+    }
 
-  
+
+    // ✅ ReceivingLotCustomFields table for flexible receiving details
+    try
+    {
+        db.Database.ExecuteSqlRaw(@"
+    CREATE TABLE IF NOT EXISTS ReceivingLotCustomFields (
+        Id INTEGER NOT NULL CONSTRAINT PK_ReceivingLotCustomFields PRIMARY KEY AUTOINCREMENT,
+        FarmId INTEGER NULL,
+        ReceivingLotId INTEGER NOT NULL,
+        FieldName TEXT NOT NULL,
+        FieldValue TEXT NOT NULL,
+        CreatedAt TEXT NOT NULL
+    );
+");
+    }
+    catch
+    {
+        // ignore
+    }
 
     try
     {
