@@ -1,0 +1,642 @@
+﻿@page
+@model Agriloco1.Pages.Farmer.AddModel
+@{
+    ViewData["Title"] = "Add Items";
+}
+
+<style>
+    .add-wrap {
+        max-width: 1250px;
+        margin: 0 auto;
+        padding: 24px;
+    }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 20px;
+        margin-bottom: 24px;
+    }
+
+    .page-title {
+        margin: 0;
+        font-size: 32px;
+    }
+
+    .subtitle {
+        color: #666;
+        margin-top: 5px;
+    }
+
+    .button {
+        display: inline-block;
+        padding: 8px 13px;
+        border: 1px solid #999;
+        border-radius: 6px;
+        background: white;
+        color: #222;
+        text-decoration: none;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+        .button:hover {
+            background: #f1f1f1;
+            color: #111;
+        }
+
+    .button-dark {
+        background: #222;
+        border-color: #222;
+        color: white;
+    }
+
+        .button-dark:hover {
+            background: #444;
+            color: white;
+        }
+
+    .button-small {
+        padding: 5px 9px;
+        font-size: 13px;
+    }
+
+    .delete-button {
+        border-color: #a33;
+        color: #922;
+        background: white;
+    }
+
+        .delete-button:hover {
+            background: #fff0f0;
+            color: #700;
+        }
+
+    .layout {
+        display: grid;
+        grid-template-columns: 1.15fr .85fr;
+        gap: 24px;
+        align-items: start;
+    }
+
+    .panel {
+        background: white;
+        border: 1px solid #d5d5d5;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .panel-header {
+        padding: 15px 18px;
+        background: #f3f3f3;
+        border-bottom: 1px solid #d5d5d5;
+    }
+
+        .panel-header h2 {
+            margin: 0;
+            font-size: 20px;
+        }
+
+    .panel-body {
+        padding: 20px;
+    }
+
+    .top-add {
+        padding: 15px 18px;
+        border-bottom: 1px solid #ddd;
+    }
+
+    .tree-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 15px;
+        min-height: 52px;
+        padding: 8px 14px;
+        border-bottom: 1px solid #ececec;
+    }
+
+        .tree-row:last-child {
+            border-bottom: none;
+        }
+
+    .tree-name {
+        font-weight: 700;
+    }
+
+    .tree-type {
+        margin-left: 7px;
+        color: #777;
+        font-size: 12px;
+        font-weight: normal;
+    }
+
+    .tree-actions {
+        display: flex;
+        gap: 6px;
+        flex-shrink: 0;
+        align-items: center;
+    }
+
+    .field {
+        margin-bottom: 18px;
+    }
+
+        .field label.main-label {
+            display: block;
+            font-weight: 700;
+            margin-bottom: 7px;
+        }
+
+    .form-control {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 10px;
+        border: 1px solid #aaa;
+        border-radius: 5px;
+        background: white;
+        font: inherit;
+    }
+
+    textarea.form-control {
+        min-height: 90px;
+    }
+
+    .field-help {
+        margin-top: 5px;
+        color: #777;
+        font-size: 13px;
+    }
+
+    .validation {
+        display: block;
+        margin-top: 5px;
+        color: #a00000;
+        font-size: 13px;
+    }
+
+    .parent-box {
+        margin-bottom: 20px;
+        padding: 14px;
+        border: 1px solid #bbb;
+        border-radius: 6px;
+        background: #fafafa;
+    }
+
+    .parent-label {
+        color: #777;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+    }
+
+    .parent-name {
+        margin-top: 4px;
+        font-size: 18px;
+        font-weight: 700;
+    }
+
+    .checkbox-line {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .message {
+        padding: 12px;
+        margin-bottom: 15px;
+        border: 1px solid #d4a0a0;
+        background: #fff5f5;
+        border-radius: 5px;
+    }
+
+    @@media (max-width: 900px) {
+        .layout {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="add-wrap">
+
+    <div class="page-header">
+
+        <div>
+            <h1 class="page-title">
+                Farm Structure
+            </h1>
+
+            <div class="subtitle">
+                @Model.FarmName
+            </div>
+        </div>
+
+        <a class="button"
+           asp-page="/Farmer/Dashboard"
+           asp-route-farmId="@Model.FarmId">
+            ← Dashboard
+        </a>
+
+    </div>
+
+    <div class="layout">
+
+        <!-- LEFT: HIERARCHY -->
+
+        <div class="panel">
+
+            <div class="panel-header">
+                <h2>Current Structure</h2>
+            </div>
+
+            <div class="top-add">
+
+                <a class="button button-dark"
+                   asp-page="/Farmer/Add"
+                   asp-route-farmId="@Model.FarmId">
+                    + New Top-Level Item
+                </a>
+
+            </div>
+
+            @if (Model.ExistingDefinitions.Count == 0)
+            {
+                <div class="panel-body">
+                    No items have been created yet.
+                </div>
+            }
+            else
+            {
+                @foreach (var item in Model.ExistingDefinitions)
+                {
+                    var depth = Model.GetDepth(item);
+
+                    var padding =
+                    14 + (depth * 30);
+
+                    <div class="tree-row"
+                         style="padding-left:@(padding)px;">
+
+                        <div>
+
+                            <span class="tree-name">
+
+                                @if (depth > 0)
+                                {
+                                    <span>↳ </span>
+                                }
+
+                                @item.DisplayName
+
+                            </span>
+
+                            <span class="tree-type">
+                                @item.DefinitionType
+                            </span>
+
+                        </div>
+
+                        <div class="tree-actions">
+
+                            <a class="button button-small button-dark"
+                               asp-page="/Farmer/Add"
+                               asp-route-farmId="@Model.FarmId"
+                               asp-route-parentId="@item.Id">
+                                + Add
+                            </a>
+
+                            <a class="button button-small"
+                               asp-page="/Farmer/Add"
+                               asp-route-farmId="@Model.FarmId"
+                               asp-route-editId="@item.Id">
+                                Edit
+                            </a>
+
+                            <form method="post"
+                                  asp-page-handler="Delete"
+                                  style="display:inline;"
+                                  onsubmit="return confirm('Delete @item.DisplayName and everything underneath it?');">
+
+                                <input type="hidden"
+                                       name="farmId"
+                                       value="@Model.FarmId" />
+
+                                <input type="hidden"
+                                       name="id"
+                                       value="@item.Id" />
+
+                                <button type="submit"
+                                        class="button button-small delete-button">
+                                    Delete
+                                </button>
+
+                            </form>
+
+                        </div>
+
+                    </div>
+                }
+            }
+
+        </div>
+
+        <!-- RIGHT: ADD OR EDIT -->
+
+        <div class="panel">
+
+            @if (Model.EditId.HasValue &&
+                        Model.ItemBeingEdited != null)
+            {
+                <!-- EDIT MODE -->
+
+                <div class="panel-header">
+                    <h2>Edit / Move Item</h2>
+                </div>
+
+                <div class="panel-body">
+
+                    <div class="parent-box">
+
+                        <div class="parent-label">
+                            Editing
+                        </div>
+
+                        <div class="parent-name">
+                            @Model.GetHierarchyName(
+                            Model.ItemBeingEdited)
+                    </div>
+
+                </div>
+
+                <form method="post"
+                      asp-page-handler="Edit">
+
+                    <input type="hidden"
+                           name="FarmId"
+                           value="@Model.FarmId" />
+
+                    <input type="hidden"
+                           asp-for="EditItem.Id" />
+
+                    <div class="field">
+
+                        <label class="main-label"
+                               asp-for="EditItem.DisplayName">
+                            Item Name
+                        </label>
+
+                        <input class="form-control"
+                               asp-for="EditItem.DisplayName" />
+
+                        <span class="validation"
+                              asp-validation-for="EditItem.DisplayName">
+                        </span>
+
+                    </div>
+
+                    <div class="field">
+
+                        <label class="main-label"
+                               asp-for="EditItem.ParentFarmDefinitionId">
+                            Parent
+                        </label>
+
+                        <select class="form-control"
+                                asp-for="EditItem.ParentFarmDefinitionId">
+
+                            <option value="">
+                                Top Level
+                            </option>
+
+                            @foreach (var possibleParent
+                                                        in Model.ExistingDefinitions)
+                                {
+                                    if (Model.CanBeParentFor(
+                                    possibleParent,
+                                    Model.ItemBeingEdited.Id))
+                                    {
+                                        <option value="@possibleParent.Id">
+                                            @Model.GetHierarchyName(
+                                            possibleParent)
+                            </option>
+                                                        }
+                                }
+
+                            </select>
+
+                            <div class="field-help">
+                                Changing this moves the item and all
+                                of its children to the selected parent.
+                            </div>
+
+                            <span class="validation"
+                                  asp-validation-for="EditItem.ParentFarmDefinitionId">
+                            </span>
+
+                        </div>
+
+                        <div class="field">
+
+                            <label class="main-label"
+                                   asp-for="EditItem.DefinitionType">
+                                Type
+                            </label>
+
+                            <select class="form-control"
+                                    asp-for="EditItem.DefinitionType">
+
+                                @foreach (var type
+                                                            in Model.DefinitionTypes)
+                                {
+                                    <option value="@type">
+                                        @type
+                                    </option>
+                                }
+
+                            </select>
+
+                        </div>
+
+                        <div class="field">
+
+                            <label class="checkbox-line">
+
+                                <input type="checkbox"
+                                       asp-for="EditItem.IsPublic" />
+
+                                Public
+
+                            </label>
+
+                        </div>
+
+                        <div class="field">
+
+                            <label class="main-label"
+                                   asp-for="EditItem.Notes">
+                                Notes
+                            </label>
+
+                            <textarea class="form-control"
+                                      asp-for="EditItem.Notes"></textarea>
+
+                        </div>
+
+                        <button type="submit"
+                                class="button button-dark">
+                            Save Changes
+                        </button>
+
+                        <a class="button"
+                           asp-page="/Farmer/Add"
+                           asp-route-farmId="@Model.FarmId">
+                            Cancel
+                        </a>
+
+                    </form>
+
+                </div>
+            }
+            else
+            {
+                <!-- ADD MODE -->
+
+                <div class="panel-header">
+
+                    @if (Model.SelectedParent != null)
+                    {
+                        <h2>Add Child Item</h2>
+                    }
+                    else
+                    {
+                        <h2>Add Top-Level Item</h2>
+                    }
+
+                </div>
+
+                <div class="panel-body">
+
+                    @if (!ViewData.ModelState.IsValid)
+                    {
+                        <div class="message">
+                            Please correct the item below.
+                        </div>
+                    }
+
+                    <div class="parent-box">
+
+                        <div class="parent-label">
+                            Adding Under
+                        </div>
+
+                        <div class="parent-name">
+
+                            @if (Model.SelectedParent != null)
+                            {
+                                @Model.GetHierarchyName(
+                                Model.SelectedParent)
+                                                }
+                            else
+                            {
+                                <span>Top Level</span>
+                            }
+
+                        </div>
+
+                    </div>
+
+                    <form method="post"
+                          asp-page-handler="Create">
+
+                        <input type="hidden"
+                               name="FarmId"
+                               value="@Model.FarmId" />
+
+                        @if (Model.SelectedParent != null)
+                        {
+                            <input type="hidden"
+                                   name="ParentId"
+                                   value="@Model.SelectedParent.Id" />
+                        }
+
+                        <div class="field">
+
+                            <label class="main-label"
+                                   asp-for="NewItem.DisplayName">
+                                Item Name
+                            </label>
+
+                            <input class="form-control"
+                                   asp-for="NewItem.DisplayName"
+                                   placeholder="Example: Apple, Honeycrisp, Row 12" />
+
+                            <span class="validation"
+                                  asp-validation-for="NewItem.DisplayName">
+                            </span>
+
+                        </div>
+
+                        <div class="field">
+
+                            <label class="main-label"
+                                   asp-for="NewItem.DefinitionType">
+                                Type
+                            </label>
+
+                            <select class="form-control"
+                                    asp-for="NewItem.DefinitionType">
+
+                                @foreach (var type
+                                                            in Model.DefinitionTypes)
+                                {
+                                    <option value="@type">
+                                        @type
+                                    </option>
+                                }
+
+                            </select>
+
+                        </div>
+
+                        <div class="field">
+
+                            <label class="checkbox-line">
+
+                                <input type="checkbox"
+                                       asp-for="NewItem.IsPublic" />
+
+                                Allow this item to be public
+
+                            </label>
+
+                        </div>
+
+                        <div class="field">
+
+                            <label class="main-label"
+                                   asp-for="NewItem.Notes">
+                                Notes
+                            </label>
+
+                            <textarea class="form-control"
+                                      asp-for="NewItem.Notes"
+                                      placeholder="Optional internal notes"></textarea>
+
+                        </div>
+
+                        <button type="submit"
+                                class="button button-dark">
+                            Add Item
+                        </button>
+
+                    </form>
+
+                </div>
+            }
+
+        </div>
+
+    </div>
+
+</div>

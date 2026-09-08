@@ -1,426 +1,939 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Net.Http.Json;
-using System.Text.Json;
-using System.Threading.Tasks;
 using Agriloco.Api.Data;
-using Agriloco.Api.Dtos;
+using Agriloco.Api.Services;
+using Agriloco1.Models.Inventory;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 
-namespace agriloco.api.Pages.Farmer
+namespace Agriloco1.Pages.Farmer
 {
     public class DashboardModel : PageModel
     {
-        private readonly IHttpClientFactory _httpClientFactory;
         private readonly AgrilocoContext _db;
-        private readonly IWebHostEnvironment _env;
+        private readonly IWebHostEnvironment _environment;
+        private readonly IEmailSender _emailSender;
+        private readonly ILogger<DashboardModel> _logger;
 
-        public DashboardModel(IHttpClientFactory httpClientFactory, AgrilocoContext db, IWebHostEnvironment env)
+        public DashboardModel(
+            AgrilocoContext db,
+            IWebHostEnvironment environment,
+            IEmailSender emailSender,
+            ILogger<DashboardModel> logger)
         {
-            _httpClientFactory = httpClientFactory;
             _db = db;
-            _env = env;
+            _environment = environment;
+            _emailSender = emailSender;
+            _logger = logger;
         }
 
         [BindProperty(SupportsGet = true)]
         public int FarmId { get; set; } = 1;
 
-        // ----------------------------
-        // Farm info (Update section)
-        // ----------------------------
+        public string FarmName { get; set; } = "Agriloco Farm";
+
+        public string? MapImageUrl { get; set; }
+
+        public DateTime? MapImageUploadedAt { get; set; }
+
         [BindProperty]
-        public FarmEditInput FarmEdit { get; set; } = new();
+        public IFormFile? BasemapUpload { get; set; }
 
-        // Show current geo on dashboard
-        public double? CurrentLat { get; set; }
-        public double? CurrentLng { get; set; }
+        public List<FarmDefinition> FarmDefinitions { get; set; } = new();
 
-        // ----------------------------
-        // Add Crop section
-        // ----------------------------
-        [BindProperty]
-        public CropCreateIn NewCrop { get; set; } = new();
+        public List<AvailabilityChannel> AvailabilityChannels { get; set; } = new();
 
-        // ----------------------------
-        // Add Crop dropdown data
-        // ----------------------------
-        public List<string> CategoryOptions { get; set; } = new();
-        public Dictionary<string, List<string>> VarietyOptionsByCategory { get; set; }
-            = new(StringComparer.OrdinalIgnoreCase);
-        public string VarietyOptionsJson { get; set; } = "{}";
+        public Dictionary<int, HashSet<int>> EnabledChannels { get; set; } = new();
 
-        // ----------------------------
-        // Manage Crop Assets section
-        // ----------------------------
-        public List<CropSearchOut> FarmCrops { get; set; } = new();
+        public List<string> StatusOptions { get; } = new()
+        {
+            "Coming Soon",
+            "Early Season",
+            "Peak Season",
+            "Late Season",
+            "Available",
+            "Limited Availability",
+            "Out of Season",
+            "Unavailable"
+        };
 
-        public string? Message { get; set; }
-
-        // ----------------------------
-        // Basemap upload section
-        // ----------------------------
-        [BindProperty]
-        public IFormFile? MapImageFile { get; set; }
-
-        public string? UploadMessage { get; set; }
-        public string? CurrentMapImageUrl { get; set; }
-
-        // ============================================================
-        // GET
-        // ============================================================
         public async Task OnGetAsync()
         {
-            if (FarmId <= 0) FarmId = 1;
-
-            NewCrop.FarmId = FarmId;
-
-            LoadFarmEditFromDb();
-            LoadCurrentMapImageUrl();
-            await LoadFarmCropsAsync();
-
-            await LoadCategoryAndVarietyOptions();
+            await LoadPageAsync();
         }
 
         // ============================================================
-        // POST: Update Farm Info
+        // STATUS
         // ============================================================
-        public async Task<IActionResult> OnPostUpdateFarmAsync()
+
+        public async Task<IActionResult> OnPostStatusAsync(
+            int farmId,
+            int farmDefinitionId,
+            string status)
         {
-            if (FarmId <= 0) FarmId = 1;
+            FarmId = farmId;
 
-            var farm = _db.Farms.FirstOrDefault(f => f.Id == FarmId);
-            if (farm == null)
+            var item = await _db.FarmDefinitions
+                .FirstOrDefaultAsync(x =>
+                    x.Id == farmDefinitionId &&
+                    x.FarmId == FarmId);
+
+            if (item != null &&
+                StatusOptions.Contains(status))
             {
-                Message = "Farm not found.";
-                LoadFarmEditFromDb();
-                LoadCurrentMapImageUrl();
-                await LoadFarmCropsAsync();
-                await LoadCategoryAndVarietyOptions();
-                return Page();
-            }
+                // Save the OLD status before changing anything.
+                //
+                // This allows us to detect an actual transition:
+                //
+                // Coming Soon -> Available
+                //
+                // rather than simply seeing that the new value
+                // happens to be Available.
 
-            farm.Name = (FarmEdit.Name ?? "").Trim();
-            farm.Address = (FarmEdit.Address ?? "").Trim();
-            farm.ContactMethod1 = (FarmEdit.ContactMethod1 ?? "").Trim();
+                string oldStatus =
+                    item.Status ?? "";
 
-            await _db.SaveChangesAsync();
+                string newStatus =
+                    status;
 
-            await TouchFarmProfileAsync(farm.Id);
+                bool wasAvailable =
+                    IsCustomerAvailableStatus(
+                        oldStatus);
 
-            Message = "Farm information updated.";
+                bool isNowAvailable =
+                    IsCustomerAvailableStatus(
+                        newStatus);
 
-            LoadFarmEditFromDb();
-            LoadCurrentMapImageUrl();
-            await LoadFarmCropsAsync();
-            await LoadCategoryAndVarietyOptions();
-            return Page();
-        }
+                bool enteredAvailability =
+                    !wasAvailable &&
+                    isNowAvailable;
 
-        // ============================================================
-        // POST: Add Crop
-        // ============================================================
-        public async Task<IActionResult> OnPostAddCropAsync()
-        {
-            if (FarmId <= 0) FarmId = 1;
+                bool canGenerateAvailabilityAlert =
+                    IsAlertableDefinitionType(
+                        item.DefinitionType);
 
-            NewCrop.FarmId = FarmId;
+                // Save the dashboard change first.
+                //
+                // The status change must succeed even if the
+                // email server is temporarily unavailable.
 
-            var client = CreateSiteClient();
+                item.Status =
+                    newStatus;
 
-            var response = await client.PostAsJsonAsync("api/Crops", NewCrop);
-            if (!response.IsSuccessStatusCode)
-            {
-                Message = $"Error creating crop: {(int)response.StatusCode} {response.ReasonPhrase}";
-                LoadFarmEditFromDb();
-                LoadCurrentMapImageUrl();
-                await LoadFarmCropsAsync();
-                await LoadCategoryAndVarietyOptions();
-                return Page();
-            }
+                item.UpdatedAt =
+                    DateTime.Now;
 
-            Message = "Crop added.";
+                await _db.SaveChangesAsync();
 
-            await TouchFarmProfileAsync(FarmId);
+                // Only Product and Variety definitions generate
+                // customer availability notifications.
+                //
+                // Locations/Rows do not generate emails.
 
-            NewCrop = new CropCreateIn { FarmId = FarmId };
-
-            LoadFarmEditFromDb();
-            LoadCurrentMapImageUrl();
-            await LoadFarmCropsAsync();
-            await LoadCategoryAndVarietyOptions();
-            return Page();
-        }
-
-        // ============================================================
-        // POST: Save Row (Crop Assets)
-        // ============================================================
-        public async Task<IActionResult> OnPostSaveRowAsync(
-            int cropId,
-            string? availability,
-            string? offeringType,
-            int? yearPlanted,
-            string? rootstock,
-            string? notes)
-        {
-            if (FarmId <= 0) FarmId = 1;
-
-            var client = CreateSiteClient();
-
-            // 1) Update Availability
-            var availPayload = new CropAvailabilityUpdateIn
-            {
-                Availability = string.IsNullOrWhiteSpace(availability) ? null : availability.Trim()
-            };
-
-            var availResp = await client.PutAsJsonAsync($"api/Crops/{cropId}/availability", availPayload);
-            if (!availResp.IsSuccessStatusCode)
-            {
-                Message = $"Error saving Availability: {(int)availResp.StatusCode} {availResp.ReasonPhrase}";
-                LoadFarmEditFromDb();
-                LoadCurrentMapImageUrl();
-                await LoadFarmCropsAsync();
-                await LoadCategoryAndVarietyOptions();
-                return Page();
-            }
-
-            // 2) Update details (OfferingType + YearPlanted + Rootstock + Notes)
-            int? normalizedYear = (yearPlanted.HasValue && yearPlanted.Value > 0) ? yearPlanted : null;
-
-            var detailsPayload = new CropDetailsUpdateIn
-            {
-                OfferingType = string.IsNullOrWhiteSpace(offeringType) ? null : offeringType.Trim(),
-                YearPlanted = normalizedYear,
-                Rootstock = string.IsNullOrWhiteSpace(rootstock) ? null : rootstock.Trim(),
-                Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim()
-            };
-
-            var detailsResp = await client.PutAsJsonAsync($"api/Crops/{cropId}/details", detailsPayload);
-            if (!detailsResp.IsSuccessStatusCode)
-            {
-                Message = $"Error saving Details: {(int)detailsResp.StatusCode} {detailsResp.ReasonPhrase}";
-                LoadFarmEditFromDb();
-                LoadCurrentMapImageUrl();
-                await LoadFarmCropsAsync();
-                await LoadCategoryAndVarietyOptions();
-                return Page();
-            }
-
-            Message = "Saved.";
-
-            await TouchFarmProfileAsync(FarmId);
-
-            LoadFarmEditFromDb();
-            LoadCurrentMapImageUrl();
-            await LoadFarmCropsAsync();
-            await LoadCategoryAndVarietyOptions();
-            return Page();
-        }
-
-        // ============================================================
-        // POST: Upload Basemap Image
-        // ============================================================
-        public async Task<IActionResult> OnPostUploadMapImageAsync()
-        {
-            if (FarmId <= 0) FarmId = 1;
-
-            var farm = _db.Farms.FirstOrDefault(f => f.Id == FarmId);
-            if (farm == null)
-            {
-                UploadMessage = "Farm not found.";
-                LoadFarmEditFromDb();
-                LoadCurrentMapImageUrl();
-                await LoadFarmCropsAsync();
-                await LoadCategoryAndVarietyOptions();
-                return Page();
-            }
-
-            if (MapImageFile == null || MapImageFile.Length == 0)
-            {
-                UploadMessage = "Choose an image file first.";
-                LoadFarmEditFromDb();
-                LoadCurrentMapImageUrl();
-                await LoadFarmCropsAsync();
-                await LoadCategoryAndVarietyOptions();
-                return Page();
-            }
-
-            var ext = Path.GetExtension(MapImageFile.FileName).ToLowerInvariant();
-            var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".webp" };
-            if (!allowed.Contains(ext))
-            {
-                UploadMessage = "Invalid file type. Use JPG, PNG, or WebP.";
-                LoadFarmEditFromDb();
-                LoadCurrentMapImageUrl();
-                await LoadFarmCropsAsync();
-                await LoadCategoryAndVarietyOptions();
-                return Page();
-            }
-
-            var folder = Path.Combine(_env.WebRootPath, "uploads", "farms", farm.Id.ToString());
-            Directory.CreateDirectory(folder);
-
-            foreach (var existing in Directory.GetFiles(folder, "basemap.*"))
-            {
-                System.IO.File.Delete(existing);
-            }
-
-            var fileName = "basemap" + ext;
-            var physicalPath = Path.Combine(folder, fileName);
-
-            using (var stream = System.IO.File.Create(physicalPath))
-            {
-                await MapImageFile.CopyToAsync(stream);
-            }
-
-            farm.MapImageUrl = $"/uploads/farms/{farm.Id}/{fileName}";
-            farm.MapImageUploadedAt = DateTime.UtcNow;
-            await _db.SaveChangesAsync();
-
-            await TouchFarmProfileAsync(farm.Id);
-
-            return RedirectToPage("/Farmer/Dashboard", new { FarmId = farm.Id });
-        }
-
-        // ============================================================
-        // Helpers
-        // ============================================================
-        private async Task TouchFarmProfileAsync(int farmId)
-        {
-            var farm = _db.Farms.FirstOrDefault(f => f.Id == farmId);
-            if (farm == null) return;
-
-            farm.ProfileLastUpdatedAt = DateTime.UtcNow;
-            farm.ProfileUpdateCount = (farm.ProfileUpdateCount <= 0) ? 1 : (farm.ProfileUpdateCount + 1);
-
-            await _db.SaveChangesAsync();
-        }
-
-        private async Task LoadFarmCropsAsync()
-        {
-            var client = CreateSiteClient();
-
-            var resp = await client.GetAsync($"api/Crops/byFarm/{FarmId}");
-            if (!resp.IsSuccessStatusCode)
-            {
-                Message ??= $"Error loading farm crops: API returned {(int)resp.StatusCode} {resp.ReasonPhrase}";
-                FarmCrops = new List<CropSearchOut>();
-                return;
-            }
-
-            var crops = await resp.Content.ReadFromJsonAsync<List<CropSearchOut>>();
-            FarmCrops = crops ?? new List<CropSearchOut>();
-        }
-
-        private void LoadFarmEditFromDb()
-        {
-            var farm = _db.Farms.FirstOrDefault(f => f.Id == FarmId);
-            if (farm == null)
-            {
-                FarmEdit = new FarmEditInput();
-                CurrentLat = null;
-                CurrentLng = null;
-                return;
-            }
-
-            FarmEdit = new FarmEditInput
-            {
-                Name = farm.Name,
-                Address = farm.Address,
-                ContactMethod1 = farm.ContactMethod1
-            };
-
-            CurrentLat = farm.Latitude;
-            CurrentLng = farm.Longitude;
-        }
-
-        private void LoadCurrentMapImageUrl()
-        {
-            var farm = _db.Farms.FirstOrDefault(f => f.Id == FarmId);
-            CurrentMapImageUrl = farm?.MapImageUrl;
-        }
-
-        // ? SQLite-safe: fetch rows, then group in-memory
-        private async Task LoadCategoryAndVarietyOptions()
-        {
-            var client = CreateSiteClient();
-
-            CategoryOptions = new List<string>();
-            VarietyOptionsByCategory = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
-
-            // Categories from API (same as Search page)
-            try
-            {
-                var catsResp = await client.GetAsync("api/Crops/categories");
-                if (catsResp.IsSuccessStatusCode)
+                if (enteredAvailability &&
+                    canGenerateAvailabilityAlert)
                 {
-                    var cats = await catsResp.Content.ReadFromJsonAsync<List<string>>();
-                    CategoryOptions = (cats ?? new List<string>())
-                        .Where(x => !string.IsNullOrWhiteSpace(x))
-                        .Select(x => x.Trim())
-                        .Distinct(StringComparer.OrdinalIgnoreCase)
-                        .OrderBy(x => x)
-                        .ToList();
+                    try
+                    {
+                        await SendAvailabilityNotificationsAsync(
+                            item);
+                    }
+                    catch (Exception exception)
+                    {
+                        // Do not undo or block the farmer's
+                        // status update because of an email problem.
+
+                        _logger.LogError(
+                            exception,
+                            "Availability email notification failed. " +
+                            "FarmId: {FarmId}, " +
+                            "FarmDefinitionId: {FarmDefinitionId}, " +
+                            "Name: {DisplayName}",
+                            item.FarmId,
+                            item.Id,
+                            item.DisplayName);
+                    }
                 }
             }
-            catch
-            {
-                // ignore if API fails
-            }
 
-            // Varieties from DB (group in memory to avoid EF translation issues)
-            var rows = await _db.Crops
-                .AsNoTracking()
-                .Where(c => !string.IsNullOrWhiteSpace(c.Category) && !string.IsNullOrWhiteSpace(c.Variety))
-                .Select(c => new
+            return RedirectToPage(
+                new
                 {
-                    Category = c.Category!,
-                    Variety = c.Variety!
-                })
-                .ToListAsync();
-
-            foreach (var grp in rows
-                .Select(r => new { Category = r.Category.Trim(), Variety = r.Variety.Trim() })
-                .Where(r => r.Category.Length > 0 && r.Variety.Length > 0)
-                .GroupBy(r => r.Category, StringComparer.OrdinalIgnoreCase))
-            {
-                VarietyOptionsByCategory[grp.Key] = grp
-                    .Select(x => x.Variety)
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .OrderBy(x => x)
-                    .ToList();
-            }
-
-            // Fallback: if categories API returned nothing, use DB-derived categories
-            if (CategoryOptions.Count == 0)
-            {
-                CategoryOptions = VarietyOptionsByCategory.Keys
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .OrderBy(x => x)
-                    .ToList();
-            }
-
-            VarietyOptionsJson = JsonSerializer.Serialize(VarietyOptionsByCategory);
+                    farmId = FarmId
+                });
         }
 
-        private HttpClient CreateSiteClient()
+        // ============================================================
+        // CUSTOMER AVAILABLE STATUS
+        // ============================================================
+
+        private bool IsCustomerAvailableStatus(
+            string? status)
         {
-            var client = _httpClientFactory.CreateClient();
-            var baseUrl = $"{Request.Scheme}://{Request.Host}/";
-            client.BaseAddress = new Uri(baseUrl);
-            return client;
+            if (string.IsNullOrWhiteSpace(
+                status))
+            {
+                return false;
+            }
+
+            return
+                status.Equals(
+                    "Available",
+                    StringComparison.OrdinalIgnoreCase) ||
+
+                status.Equals(
+                    "Peak Season",
+                    StringComparison.OrdinalIgnoreCase) ||
+
+                status.Equals(
+                    "Limited Availability",
+                    StringComparison.OrdinalIgnoreCase) ||
+
+                status.Equals(
+                    "Late Season",
+                    StringComparison.OrdinalIgnoreCase);
         }
 
-        public class FarmEditInput
+        // ============================================================
+        // ALERTABLE DEFINITION TYPE
+        // ============================================================
+
+        private bool IsAlertableDefinitionType(
+            string? definitionType)
         {
-            public string? Name { get; set; }
-            public string? Address { get; set; }
-            public string? ContactMethod1 { get; set; }
+            if (string.IsNullOrWhiteSpace(
+                definitionType))
+            {
+                return false;
+            }
+
+            return
+                definitionType.Equals(
+                    "Product",
+                    StringComparison.OrdinalIgnoreCase) ||
+
+                definitionType.Equals(
+                    "Variety",
+                    StringComparison.OrdinalIgnoreCase);
+        }
+
+        // ============================================================
+        // SEND AVAILABILITY NOTIFICATIONS
+        // ============================================================
+
+        private async Task SendAvailabilityNotificationsAsync(
+            FarmDefinition availableItem)
+        {
+            // --------------------------------------------------------
+            // Determine which subscriptions match this item.
+            //
+            // Example:
+            //
+            // Ambrosia becomes Available.
+            //
+            // Matching subscription scopes:
+            //
+            // NULL       = All Crops
+            // Apple      = parent Product
+            // Ambrosia   = exact Variety
+            // --------------------------------------------------------
+
+            var matchingDefinitionIds =
+                await GetSubscriptionAncestorIdsAsync(
+                    availableItem);
+
+            var subscriptions =
+                await _db
+                    .FarmDefinitionAvailabilitySubscriptions
+                    .Where(x =>
+                        x.FarmId ==
+                            availableItem.FarmId &&
+
+                        x.IsActive &&
+
+                        x.Channel ==
+                            "email" &&
+
+                        (
+                            x.FarmDefinitionId == null ||
+
+                            (
+                                x.FarmDefinitionId.HasValue &&
+                                matchingDefinitionIds.Contains(
+                                    x.FarmDefinitionId.Value)
+                            )
+                        ))
+                    .ToListAsync();
+
+            if (subscriptions.Count == 0)
+            {
+                return;
+            }
+
+            // --------------------------------------------------------
+            // DEDUPLICATE EMAIL ADDRESSES
+            //
+            // A customer could be subscribed to:
+            //
+            // All Crops
+            // Apple
+            // Ambrosia
+            //
+            // We only want ONE Ambrosia email for that event.
+            // --------------------------------------------------------
+
+            var emailGroups =
+                subscriptions
+                    .Where(x =>
+                        !string.IsNullOrWhiteSpace(
+                            x.Email))
+                    .GroupBy(
+                        x => x.Email
+                            .Trim()
+                            .ToLowerInvariant())
+                    .ToList();
+
+            if (emailGroups.Count == 0)
+            {
+                return;
+            }
+
+            string farmName =
+                await _db.Farms
+                    .AsNoTracking()
+                    .Where(x =>
+                        x.Id ==
+                            availableItem.FarmId)
+                    .Select(x =>
+                        x.Name)
+                    .FirstOrDefaultAsync()
+                    ?? "Agriloco Farm";
+
+            string subject =
+                $"{availableItem.DisplayName} is now available at {farmName}";
+
+            string body =
+                BuildAvailabilityEmailBody(
+                    farmName,
+                    availableItem);
+
+            DateTime notificationTime =
+                DateTime.UtcNow;
+
+            foreach (var emailGroup in emailGroups)
+            {
+                string email =
+                    emailGroup.Key;
+
+                try
+                {
+                    await _emailSender.SendAsync(
+                        email,
+                        subject,
+                        body);
+
+                    // Update every matching subscription belonging
+                    // to this email address.
+                    //
+                    // The subscriptions remain active.
+
+                    foreach (var subscription in emailGroup)
+                    {
+                        subscription.LastNotifiedAt =
+                            notificationTime;
+                    }
+
+                    // Save after each successful recipient.
+                    //
+                    // If a later email fails, successful sends
+                    // still have their notification time recorded.
+
+                    await _db.SaveChangesAsync();
+
+                    _logger.LogInformation(
+                        "Availability email sent. " +
+                        "FarmId: {FarmId}, " +
+                        "FarmDefinitionId: {FarmDefinitionId}, " +
+                        "Name: {DisplayName}, " +
+                        "Email: {Email}",
+                        availableItem.FarmId,
+                        availableItem.Id,
+                        availableItem.DisplayName,
+                        email);
+                }
+                catch (Exception exception)
+                {
+                    // Continue to other subscribers if one address
+                    // or SMTP send fails.
+
+                    _logger.LogError(
+                        exception,
+                        "Could not send availability email. " +
+                        "FarmId: {FarmId}, " +
+                        "FarmDefinitionId: {FarmDefinitionId}, " +
+                        "Email: {Email}",
+                        availableItem.FarmId,
+                        availableItem.Id,
+                        email);
+                }
+            }
+        }
+
+        // ============================================================
+        // SUBSCRIPTION ANCESTORS
+        // ============================================================
+
+        private async Task<List<int>>
+            GetSubscriptionAncestorIdsAsync(
+                FarmDefinition item)
+        {
+            var result =
+                new List<int>();
+
+            var visited =
+                new HashSet<int>();
+
+            // Exact item always matches.
+            //
+            // Example:
+            // Ambrosia subscriber.
+
+            result.Add(
+                item.Id);
+
+            visited.Add(
+                item.Id);
+
+            int? parentId =
+                item.ParentFarmDefinitionId;
+
+            int safety =
+                0;
+
+            while (
+                parentId.HasValue &&
+                safety < 50)
+            {
+                var parent =
+                    await _db.FarmDefinitions
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(x =>
+                            x.Id ==
+                                parentId.Value &&
+                            x.FarmId ==
+                                item.FarmId &&
+                            x.IsActive);
+
+                if (parent == null)
+                {
+                    break;
+                }
+
+                if (!visited.Add(
+                    parent.Id))
+                {
+                    // Protect against malformed/circular
+                    // hierarchy data.
+
+                    break;
+                }
+
+                // Only Product/Variety ancestors are relevant
+                // subscription scopes.
+                //
+                // Example:
+                // Ambrosia -> Apple
+
+                if (IsAlertableDefinitionType(
+                    parent.DefinitionType))
+                {
+                    result.Add(
+                        parent.Id);
+                }
+
+                parentId =
+                    parent.ParentFarmDefinitionId;
+
+                safety++;
+            }
+
+            return result;
+        }
+
+        // ============================================================
+        // EMAIL BODY
+        // ============================================================
+
+        private string BuildAvailabilityEmailBody(
+            string farmName,
+            FarmDefinition availableItem)
+        {
+            return
+                $"Good news!\n\n" +
+                $"{availableItem.DisplayName} is now available " +
+                $"at {farmName}.\n\n" +
+                $"Current status: {availableItem.Status}\n\n" +
+                $"Availability can change during the day, " +
+                $"so please check the farm's current Agriloco map " +
+                $"before visiting.\n\n" +
+                $"{farmName}";
+        }
+
+        // ============================================================
+        // AVAILABILITY CHANNEL
+        // ============================================================
+
+        public async Task<IActionResult> OnPostChannelAsync(
+            int farmId,
+            int farmDefinitionId,
+            int availabilityChannelId,
+            bool isEnabled)
+        {
+            FarmId = farmId;
+
+            var itemExists = await _db.FarmDefinitions
+                .AnyAsync(x =>
+                    x.Id == farmDefinitionId &&
+                    x.FarmId == FarmId);
+
+            var channelExists = await _db.AvailabilityChannels
+                .AnyAsync(x =>
+                    x.Id == availabilityChannelId &&
+                    x.IsActive);
+
+            if (!itemExists || !channelExists)
+            {
+                return RedirectToPage(
+                    new
+                    {
+                        farmId = FarmId
+                    });
+            }
+
+            var link = await _db.FarmDefinitionChannels
+                .FirstOrDefaultAsync(x =>
+                    x.FarmDefinitionId == farmDefinitionId &&
+                    x.AvailabilityChannelId == availabilityChannelId);
+
+            if (link == null)
+            {
+                link = new FarmDefinitionChannel
+                {
+                    FarmDefinitionId = farmDefinitionId,
+                    AvailabilityChannelId = availabilityChannelId,
+                    IsEnabled = isEnabled,
+                    UpdatedAt = DateTime.Now
+                };
+
+                _db.FarmDefinitionChannels.Add(link);
+            }
+            else
+            {
+                link.IsEnabled = isEnabled;
+                link.UpdatedAt = DateTime.Now;
+            }
+
+            await _db.SaveChangesAsync();
+
+            return RedirectToPage(
+                new
+                {
+                    farmId = FarmId
+                });
+        }
+
+        // ============================================================
+        // PUBLIC VISIBILITY
+        // ============================================================
+
+        public async Task<IActionResult> OnPostPublicAsync(
+            int farmId,
+            int farmDefinitionId,
+            bool isPublic)
+        {
+            FarmId = farmId;
+
+            var item = await _db.FarmDefinitions
+                .FirstOrDefaultAsync(x =>
+                    x.Id == farmDefinitionId &&
+                    x.FarmId == FarmId);
+
+            if (item != null)
+            {
+                item.IsPublic = isPublic;
+                item.UpdatedAt = DateTime.Now;
+
+                await _db.SaveChangesAsync();
+            }
+
+            return RedirectToPage(
+                new
+                {
+                    farmId = FarmId
+                });
+        }
+
+        // ============================================================
+        // BASEMAP UPLOAD
+        // ============================================================
+
+        public async Task<IActionResult> OnPostBasemapAsync(
+            int farmId)
+        {
+            FarmId = farmId;
+
+            var farm = await _db.Farms
+                .FirstOrDefaultAsync(x =>
+                    x.Id == FarmId);
+
+            if (farm == null)
+            {
+                return NotFound();
+            }
+
+            if (BasemapUpload == null ||
+                BasemapUpload.Length == 0)
+            {
+                ModelState.AddModelError(
+                    "",
+                    "Please choose an image to upload.");
+
+                await LoadPageAsync();
+
+                return Page();
+            }
+
+            var extension = Path
+                .GetExtension(BasemapUpload.FileName)
+                .ToLowerInvariant();
+
+            var allowedExtensions = new[]
+            {
+                ".jpg",
+                ".jpeg",
+                ".png",
+                ".webp"
+            };
+
+            if (!allowedExtensions.Contains(extension))
+            {
+                ModelState.AddModelError(
+                    "",
+                    "Please upload a JPG, JPEG, PNG or WebP image.");
+
+                await LoadPageAsync();
+
+                return Page();
+            }
+
+            // Maximum basemap size: 20 MB
+            const long maxFileSize =
+                20 * 1024 * 1024;
+
+            if (BasemapUpload.Length > maxFileSize)
+            {
+                ModelState.AddModelError(
+                    "",
+                    "The basemap image must be 20 MB or smaller.");
+
+                await LoadPageAsync();
+
+                return Page();
+            }
+
+            // ========================================================
+            // CREATE FARM UPLOAD FOLDER
+            //
+            // wwwroot/uploads/farms/{FarmId}/
+            // ========================================================
+
+            var relativeFolder = Path.Combine(
+                "uploads",
+                "farms",
+                FarmId.ToString());
+
+            var physicalFolder = Path.Combine(
+                _environment.WebRootPath,
+                relativeFolder);
+
+            Directory.CreateDirectory(
+                physicalFolder);
+
+            // ========================================================
+            // USE PREDICTABLE BASEMAP NAME
+            // ========================================================
+
+            var fileName =
+                "basemap" + extension;
+
+            var physicalPath = Path.Combine(
+                physicalFolder,
+                fileName);
+
+            // ========================================================
+            // REMOVE OLD BASEMAP IF EXTENSION CHANGED
+            // ========================================================
+
+            if (!string.IsNullOrWhiteSpace(
+                farm.MapImageUrl))
+            {
+                var oldRelativePath =
+                    farm.MapImageUrl
+                        .TrimStart('/')
+                        .Replace(
+                            '/',
+                            Path.DirectorySeparatorChar);
+
+                var oldPhysicalPath =
+                    Path.Combine(
+                        _environment.WebRootPath,
+                        oldRelativePath);
+
+                if (System.IO.File.Exists(
+                        oldPhysicalPath) &&
+                    !string.Equals(
+                        oldPhysicalPath,
+                        physicalPath,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    System.IO.File.Delete(
+                        oldPhysicalPath);
+                }
+            }
+
+            // ========================================================
+            // SAVE IMAGE
+            // ========================================================
+
+            await using (
+                var stream = new FileStream(
+                    physicalPath,
+                    FileMode.Create))
+            {
+                await BasemapUpload
+                    .CopyToAsync(stream);
+            }
+
+            // ========================================================
+            // SAVE URL TO FARM
+            // ========================================================
+
+            farm.MapImageUrl =
+                $"/uploads/farms/{FarmId}/{fileName}";
+
+            farm.MapImageUploadedAt =
+                DateTime.UtcNow;
+
+            await _db.SaveChangesAsync();
+
+            return RedirectToPage(
+                new
+                {
+                    farmId = FarmId
+                });
+        }
+
+        // ============================================================
+        // LOAD PAGE
+        // ============================================================
+
+        private async Task LoadPageAsync()
+        {
+            var farm = await _db.Farms
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x =>
+                    x.Id == FarmId);
+
+            if (farm != null)
+            {
+                FarmName = farm.Name;
+
+                MapImageUrl =
+                    farm.MapImageUrl;
+
+                MapImageUploadedAt =
+                    farm.MapImageUploadedAt;
+            }
+
+            // ========================================================
+            // LOAD FARM DEFINITIONS
+            // ========================================================
+
+            var rawDefinitions =
+                await _db.FarmDefinitions
+                    .AsNoTracking()
+                    .Where(x =>
+                        x.FarmId == FarmId &&
+                        x.IsActive)
+                    .ToListAsync();
+
+            FarmDefinitions =
+                OrderHierarchy(
+                    rawDefinitions);
+
+            // ========================================================
+            // LOAD AVAILABILITY CHANNELS
+            // ========================================================
+
+            AvailabilityChannels =
+                await _db.AvailabilityChannels
+                    .AsNoTracking()
+                    .Where(x =>
+                        x.IsActive)
+                    .OrderBy(x =>
+                        x.SortOrder)
+                    .ThenBy(x =>
+                        x.Name)
+                    .ToListAsync();
+
+            var definitionIds =
+                FarmDefinitions
+                    .Select(x =>
+                        x.Id)
+                    .ToList();
+
+            var links =
+                await _db.FarmDefinitionChannels
+                    .AsNoTracking()
+                    .Where(x =>
+                        definitionIds.Contains(
+                            x.FarmDefinitionId) &&
+                        x.IsEnabled)
+                    .ToListAsync();
+
+            EnabledChannels =
+                links
+                    .GroupBy(x =>
+                        x.FarmDefinitionId)
+                    .ToDictionary(
+                        x => x.Key,
+                        x => x
+                            .Select(y =>
+                                y.AvailabilityChannelId)
+                            .ToHashSet());
+        }
+
+        // ============================================================
+        // HIERARCHY ORDERING
+        // ============================================================
+
+        private List<FarmDefinition> OrderHierarchy(
+            List<FarmDefinition> source)
+        {
+            var result =
+                new List<FarmDefinition>();
+
+            var visited =
+                new HashSet<int>();
+
+            void AddChildren(
+                int? parentId)
+            {
+                var children =
+                    source
+                        .Where(x =>
+                            x.ParentFarmDefinitionId ==
+                            parentId)
+                        .OrderBy(x =>
+                            x.SortOrder)
+                        .ThenBy(x =>
+                            x.DisplayName)
+                        .ToList();
+
+                foreach (
+                    var child
+                    in children)
+                {
+                    if (!visited.Add(
+                        child.Id))
+                    {
+                        continue;
+                    }
+
+                    result.Add(
+                        child);
+
+                    AddChildren(
+                        child.Id);
+                }
+            }
+
+            AddChildren(
+                null);
+
+            foreach (
+                var item
+                in source
+                    .OrderBy(x =>
+                        x.SortOrder)
+                    .ThenBy(x =>
+                        x.DisplayName))
+            {
+                if (visited.Add(
+                    item.Id))
+                {
+                    result.Add(
+                        item);
+                }
+            }
+
+            return result;
+        }
+
+        // ============================================================
+        // DISPLAY HELPERS
+        // ============================================================
+
+        public int GetDepth(
+            FarmDefinition item)
+        {
+            var depth =
+                0;
+
+            var parentId =
+                item.ParentFarmDefinitionId;
+
+            var safety =
+                0;
+
+            while (
+                parentId.HasValue &&
+                safety < 50)
+            {
+                var parent =
+                    FarmDefinitions
+                        .FirstOrDefault(x =>
+                            x.Id ==
+                            parentId.Value);
+
+                if (parent == null)
+                {
+                    break;
+                }
+
+                depth++;
+
+                parentId =
+                    parent.ParentFarmDefinitionId;
+
+                safety++;
+            }
+
+            return depth;
+        }
+
+        public bool IsChannelEnabled(
+            int farmDefinitionId,
+            int channelId)
+        {
+            return
+                EnabledChannels.TryGetValue(
+                    farmDefinitionId,
+                    out var channels)
+                &&
+                channels.Contains(
+                    channelId);
         }
     }
 }
