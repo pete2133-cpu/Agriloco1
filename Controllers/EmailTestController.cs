@@ -30,7 +30,8 @@ namespace Agriloco.Api.Controllers
                 port = _config["Email:Port"],
                 user = _config["Email:User"],
                 from = _config["Email:From"],
-                hasAppPassword = !string.IsNullOrWhiteSpace(_config["Email:AppPassword"])
+                hasAppPassword = !string.IsNullOrWhiteSpace(_config["Email:AppPassword"]),
+                appPasswordLength = _config["Email:AppPassword"]?.Length ?? 0
             });
         }
 

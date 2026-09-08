@@ -17,13 +17,13 @@ namespace Agriloco.Api.Models
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         // ==========================
-        // (2) Geo location (manual or future external import)
+        // (2) Geo location
         // ==========================
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }
 
         // ==========================
-        // (3) Hours placeholder (manual or future Google import)
+        // (3) Hours
         // ==========================
         public string? Hours { get; set; }
 
@@ -42,7 +42,7 @@ namespace Agriloco.Api.Models
         public int ProfileUpdateCount { get; set; } = 0;
 
         // ==========================
-        // Basemap image (already used)
+        // Basemap image
         // ==========================
         public string? MapImageUrl { get; set; }
         public DateTime? MapImageUploadedAt { get; set; }
