@@ -1,4 +1,5 @@
 using Agriloco.Api.Data;
+using Agriloco1.Services;
 using Agriloco1.Models.Inventory;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -29,6 +30,13 @@ namespace Agriloco1.Pages.Farmer.Inventory
 
         [BindProperty]
         public NewCheckInput NewCheck { get; set; } = new();
+
+        public List<Recipe> RecipeOptions { get; set; } = new();
+        public List<ReceivingLot> ReceivingOptions { get; set; } = new();
+        public Dictionary<int, ProductionIngredientSource> IngredientSources { get; set; } = new();
+        public Dictionary<int, ReceivingTransfer> SourceDetails { get; set; } = new();
+        public Dictionary<int, HarvestTransfer> ReceiptHarvests { get; set; } = new();
+        public bool CanLoadRecipe { get; set; }
 
         public List<ProductionRunIngredient> Ingredients { get; set; } = new();
 
@@ -72,6 +80,108 @@ namespace Agriloco1.Pages.Farmer.Inventory
 
             return Page();
         }
+
+        public async Task<IActionResult> OnPostLoadRecipeAsync(int runId, int farmId, int recipeId)
+        {
+            FarmId = farmId;
+            var run = await FindRunAsync(runId);
+            if (run == null) return NotFound();
+            await LoadPageDataAsync(run.Id);
+            if (!CanLoadRecipe)
+            {
+                await LoadFailureAsync(run, "Recipe loading is available only for an untouched draft. Create a new production run to use another recipe after quantities, sources or work have been recorded.");
+                return Page();
+            }
+            var recipe = await _db.Recipes.FirstOrDefaultAsync(x => x.Id == recipeId && x.FarmId == FarmId && x.IsActive);
+            var rows = await _db.RecipeIngredients.Where(x => x.RecipeId == recipeId && x.FarmId == FarmId).OrderBy(x => x.SortOrder).ThenBy(x => x.Id).ToListAsync();
+            if (recipe == null || rows.Count == 0)
+            {
+                await LoadFailureAsync(run, "Select a saved recipe with ingredients.");
+                return Page();
+            }
+            await using var transaction = await _db.Database.BeginTransactionAsync();
+            _db.ProductionRunIngredients.RemoveRange(Ingredients);
+            foreach (var row in rows)
+                _db.ProductionRunIngredients.Add(new ProductionRunIngredient {
+                    FarmId = FarmId, ProductionRunId = run.Id, RecipeIngredientId = row.Id,
+                    InventoryItemId = row.InventoryItemId, InventoryItemPackageId = row.InventoryItemPackageId,
+                    IngredientName = row.IngredientName, VariationName = row.VariationName,
+                    RecipeQuantity = row.Quantity, SuggestedQuantity = row.Quantity, Unit = row.Unit,
+                    Notes = row.Notes, SortOrder = row.SortOrder
+                });
+            run.RecipeId = recipe.Id;
+            run.RecipeName = recipe.RecipeName;
+            run.ExpectedYieldQuantity = recipe.ExpectedYieldQuantity;
+            run.ExpectedYieldUnit = recipe.ExpectedYieldUnit;
+            run.ActualYieldUnit = recipe.ExpectedYieldUnit;
+            run.UpdatedAt = DateTime.Now;
+            await _db.SaveChangesAsync();
+            await transaction.CommitAsync();
+            return RedirectToRun(run.Id);
+        }
+
+        public async Task<IActionResult> OnPostSaveSourceAsync(int runId, int farmId, int ingredientId,
+            string sourceMode, int? receivingLotId, string? receiptPayload, bool confirmReceipt = false)
+        {
+            FarmId = farmId;
+            var run = await FindRunAsync(runId);
+            if (run == null) return NotFound();
+            if (run.Status == "Complete" || run.Status == "Cancelled")
+            {
+                await LoadFailureAsync(run, "Sources are locked for completed or cancelled production runs.");
+                return Page();
+            }
+            var ingredient = await _db.ProductionRunIngredients.FirstOrDefaultAsync(x => x.Id == ingredientId && x.ProductionRunId == run.Id && x.FarmId == FarmId);
+            if (ingredient == null) return NotFound();
+            ReceivingTransfer? source = null;
+            string? error = null;
+            if (sourceMode == "local")
+            {
+                var lot = await _db.ReceivingLots.AsNoTracking().FirstOrDefaultAsync(x => x.Id == receivingLotId && x.FarmId == FarmId);
+                if (lot == null || !MatchesIngredient(ingredient, lot))
+                    error = "Choose a saved receiving lot for this ingredient from this farm.";
+                else source = await ReceivingTransfer.FromLotAsync(_db, FarmId, lot.Id);
+                if (error == null && (source == null || !ReceivingTransfer.TryParse(source.Encode(), out _)))
+                    error = "This receipt's source information is incomplete or too long. Check its receiving QR label.";
+            }
+            else if (sourceMode == "qr")
+            {
+                if (!ReceivingTransfer.TryParse(receiptPayload?.Trim(), out source))
+                    error = "Scan a valid Agriloco receiving QR label, including its receipt information. A harvest-only label is not a receiving record.";
+                else if (!confirmReceipt)
+                    error = "Review the receipt and confirm that it is the source for this ingredient.";
+            }
+            else if (sourceMode != "none") error = "Choose whether to record an ingredient source.";
+            if (error != null)
+            {
+                await LoadFailureAsync(run, error);
+                return Page();
+            }
+            var existing = await _db.ProductionIngredientSources.FirstOrDefaultAsync(x => x.FarmId == FarmId && x.ProductionRunId == run.Id && x.ProductionRunIngredientId == ingredient.Id);
+            if (sourceMode == "none")
+            {
+                if (existing != null) _db.ProductionIngredientSources.Remove(existing);
+            }
+            else
+            {
+                if (existing == null)
+                {
+                    existing = new ProductionIngredientSource { FarmId = FarmId, ProductionRunId = run.Id, ProductionRunIngredientId = ingredient.Id };
+                    _db.ProductionIngredientSources.Add(existing);
+                }
+                existing.ReceivingLotId = sourceMode == "local" ? receivingLotId : null;
+                existing.ReceiptPayload = source!.Encode();
+                existing.RecordedAt = DateTime.Now;
+            }
+            run.UpdatedAt = DateTime.Now;
+            await _db.SaveChangesAsync();
+            return RedirectToRun(run.Id);
+        }
+
+        public static bool MatchesIngredient(ProductionRunIngredient ingredient, ReceivingLot lot) =>
+            ingredient.InventoryItemId.HasValue
+                ? ingredient.InventoryItemId == lot.InventoryItemId
+                : string.Equals(ingredient.IngredientName.Trim(), lot.InventoryItemName.Trim(), StringComparison.OrdinalIgnoreCase);
 
         public async Task<IActionResult> OnPostSaveHeaderAsync()
         {
@@ -812,6 +922,23 @@ namespace Agriloco1.Pages.Farmer.Inventory
         private async Task LoadPageDataAsync(int runId)
         {
             Ingredients = await GetIngredientsAsync(runId);
+            RecipeOptions = await _db.Recipes.AsNoTracking().Where(x => x.FarmId == FarmId && x.IsActive).OrderBy(x => x.RecipeName).ToListAsync();
+            ReceivingOptions = await _db.ReceivingLots.AsNoTracking().Where(x => x.FarmId == FarmId).OrderByDescending(x => x.ReceivedDate).ThenByDescending(x => x.Id).ToListAsync();
+            var harvestFields = await _db.ReceivingLotCustomFields.AsNoTracking().Where(x => x.FarmId == FarmId && x.FieldName == HarvestTransfer.FieldName).ToListAsync();
+            ReceiptHarvests = new();
+            foreach (var field in harvestFields)
+                if (HarvestTransfer.TryParse(field.FieldValue, out var harvest)) ReceiptHarvests[field.ReceivingLotId] = harvest!;
+            IngredientSources = await _db.ProductionIngredientSources.AsNoTracking().Where(x => x.FarmId == FarmId && x.ProductionRunId == runId).ToDictionaryAsync(x => x.ProductionRunIngredientId);
+            SourceDetails = new();
+            foreach (var entry in IngredientSources)
+                if (ReceivingTransfer.TryParse(entry.Value.ReceiptPayload, out var receipt)) SourceDetails[entry.Key] = receipt!;
+            var sourceRun = await FindRunAsync(runId);
+            CanLoadRecipe = sourceRun != null && sourceRun.Status == "Draft" && !sourceRun.IngredientsCommitted
+                && !sourceRun.OutputPosted && sourceRun.StartedAt == null && sourceRun.ScaleFactor == null
+                && sourceRun.ActualYieldQuantity == null && IngredientSources.Count == 0
+                && Ingredients.All(x => x.ActualQuantity == null && x.CommittedQuantity == 0)
+                && !await _db.ProductionWorkEntries.AnyAsync(x => x.FarmId == FarmId && x.ProductionRunId == runId)
+                && !await _db.ProductionObservations.AnyAsync(x => x.FarmId == FarmId && x.ProductionRunId == runId);
 
             WorkEntries = await _db.ProductionWorkEntries
                 .Where(x =>

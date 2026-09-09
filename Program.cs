@@ -1,4 +1,4 @@
-﻿using Agriloco.Api.Data;
+using Agriloco.Api.Data;
 using Agriloco.Api.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
@@ -64,6 +64,7 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<AgrilocoContext>();
 
     db.Database.EnsureCreated();
+    Agriloco1.Services.ProductionSourceSchema.EnsureCreated(db);
 
     try
     {

@@ -3,7 +3,7 @@
 
 <partial name="_InventoryNav" />
 <div class="inventory-page">
-<h1>Receiving Lot Details</h1>
+<h1>Receiving Lot Details</h1><p><a asp-page="ReceivingLabel" asp-route-id="@Model.ReceivingLot.Id" asp-route-farmId="@Model.FarmId">Show / print receiving QR label</a></p>
 @if (Model.HarvestSource is { } source)
 {
     <section class="harvest-source-card">

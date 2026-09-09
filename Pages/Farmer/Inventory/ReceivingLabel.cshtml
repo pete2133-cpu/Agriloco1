@@ -1,0 +1,28 @@
+@page
+@model Agriloco1.Pages.Farmer.Inventory.ReceivingLabelModel
+<div class="inventory-page harvest-label">
+    <div class="label-actions">
+        <a asp-page="ReceivingLotDetails" asp-route-id="@Model.Id" asp-route-farmId="@Model.FarmId">Back to receiving record</a>
+        <button type="button" onclick="window.print()">Print label / Save PDF</button>
+    </div>
+    <h1>Receiving record</h1>
+    @if (Model.Error != null) { <p role="alert">@Model.Error</p> }
+    else if (Model.Source is { } source)
+    {
+        <h2>@source.Receiver</h2><p>@source.Address</p>
+        <p><strong>@source.Lot</strong> · Received @source.Date.ToString("yyyy-MM-dd")</p>
+        <p>Supplier: @source.Supplier</p>
+        <p>Item: @source.Item · Crop variety: @(source.Harvest?.Variety ?? "Not recorded")</p>
+        <p>Received: @source.Quantity @source.Unit · Total: @source.TotalQuantity @source.BaseUnit · Condition: @source.Condition</p>
+        @if (source.Harvest is { } harvest)
+        {
+            <h3>Original harvest</h3>
+            <p>@harvest.Summary</p><p>@harvest.Address</p>
+        }
+        else { <p>Harvest source not recorded.</p> }
+        <img src="@Model.Image" alt="Scannable receiving record QR code" class="harvest-qr" />
+        <p>In Production Run Details, choose an ingredient's source and scan this receipt.</p>
+        <p>Business-supplied receipt details. The receipt quantity is separate from the amount used in production.</p>
+        <details class="label-actions"><summary>Copy transfer text instead</summary><textarea readonly rows="8" aria-label="Receipt transfer text">@Model.Payload</textarea></details>
+    }
+</div>

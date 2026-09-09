@@ -278,6 +278,8 @@ namespace Agriloco1.Pages.Farmer.Inventory
             _db.ProductionRunIngredients
                 .RemoveRange(ingredients);
 
+            var sources = await _db.ProductionIngredientSources.Where(x => x.FarmId == FarmId && x.ProductionRunId == run.Id).ToListAsync();
+            _db.ProductionIngredientSources.RemoveRange(sources);
             _db.ProductionRuns.Remove(run);
 
             await _db.SaveChangesAsync();

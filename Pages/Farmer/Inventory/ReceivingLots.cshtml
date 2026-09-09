@@ -194,6 +194,7 @@
                     <td>@lot.Status</td>
                     <td>
                         <a href="/Farmer/Inventory/ReceivingLotDetails?id=@lot.Id&farmId=@Model.FarmId">Details</a>
+                        <a asp-page="ReceivingLabel" asp-route-id="@lot.Id" asp-route-farmId="@Model.FarmId">QR label</a>
 
                         <form method="post" asp-page-handler="Delete" style="display:inline; margin-left:8px;"
                               onsubmit="return confirm('Delete this receiving lot?');">
