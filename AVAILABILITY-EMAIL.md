@@ -17,14 +17,14 @@
 - SMTP failures do not undo the availability change. They are logged and shown in the dashboard; failed recipients are not marked notified. Other recipients are still attempted. SMTP attempts have a 20-second cancellation timeout.
 
 ## Configuration and limits
-The existing Email:Host, Email:Port, Email:User, Email:AppPassword and Email:From settings are unchanged. Settings were present, but no real SMTP authentication or inbox delivery was tested. Successful SMTP submission does not guarantee inbox placement.
+SMTP uses Email:Host, Email:Port, Email:User, Email:AppPassword and Email:From. A stale AppPassword override in appsettings.Development.json caused Gmail authentication error 535 when launched from Visual Studio. That override has been removed, so development inherits the main configuration password. The main credential successfully authenticated to Gmail over TLS (235); no email was submitted during diagnosis. Inbox delivery still needs an actual availability transition after restarting the app.
 
 Notifications are sent during the status request. This change does not add a durable mail outbox or automatic retries; a failed attempt is reported for troubleshooting. Already-available items do not generate retrospective emails when a new subscription is created. This change concerns dashboard availability status, not sales-channel checkboxes.
 
 ## Verification
 Build passed with zero errors and the two pre-existing nullable warnings in FarmControllers. Nineteen tests on a copied SQLite database used a capturing/failing IEmailSender: direct transitions, parent activation, deduplication, legacy fulfillment, recurring subscriptions, private/inactive/other-farm exclusions, failure reporting, successful-recipient timestamps, and public subscription API through to the dashboard sender.
 
-No real emails were sent, no credentials were printed or modified, and the working database was excluded from the checkpoint.
+No real emails were sent and no credentials were printed. The obsolete development password override was removed; the working main credential was not changed. The working database was excluded from the checkpoint.
 
 ## Files
 - Services/DashboardAvailabilityNotifications.cs — matching, deduplication, sending and subscription bookkeeping.
