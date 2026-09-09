@@ -11,6 +11,8 @@ namespace Agriloco.Api.Data
         {
         }
 
+        protected AgrilocoContext(DbContextOptions options) : base(options) { }
+
         // ============================================================
         // EXISTING FARM / SEARCH / UNITY DATA
         // ============================================================

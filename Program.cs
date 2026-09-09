@@ -5,27 +5,41 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Configuration
-    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
-    .AddEnvironmentVariables();
-
 builder.Services.AddControllers();
 builder.Services.AddRazorPages();
 
-builder.Services.AddDbContext<AgrilocoContext>(options =>
+var provider = builder.Configuration["Database:Provider"]
+    ?? (builder.Environment.IsDevelopment() ? "Sqlite" : "SqlServer");
+var connection = builder.Configuration.GetConnectionString("Default");
+if (provider.Equals("Sqlite", StringComparison.OrdinalIgnoreCase) && builder.Environment.IsDevelopment())
 {
-    var cs = builder.Configuration.GetConnectionString("Default");
-    if (string.IsNullOrWhiteSpace(cs))
-        cs = "Data Source=agriloco.db";
+    builder.Services.AddDbContext<AgrilocoContext>(options =>
+        options.UseSqlite(string.IsNullOrWhiteSpace(connection) ? "Data Source=agriloco.db" : connection));
+}
+else if (provider.Equals("SqlServer", StringComparison.OrdinalIgnoreCase))
+{
+    if (string.IsNullOrWhiteSpace(connection))
+        throw new InvalidOperationException("Set ConnectionStrings__Default for SQL Server/Azure SQL.");
+    builder.Services.AddDbContext<SqlServerAgrilocoContext>(options =>
+        options.UseSqlServer(connection, sql => sql.EnableRetryOnFailure()));
+    builder.Services.AddScoped<AgrilocoContext>(services => services.GetRequiredService<SqlServerAgrilocoContext>());
+}
+else
+{
+    throw new InvalidOperationException("Database:Provider must be SqlServer, or Sqlite in Development only.");
+}
 
-    options.UseSqlite(cs);
-});
-
+var publicUrl = builder.Configuration["Application:PublicBaseUrl"];
+if (!Uri.TryCreate(publicUrl, UriKind.Absolute, out var publicBaseUri) ||
+    publicBaseUri.AbsolutePath != "/" || publicBaseUri.Query.Length != 0 ||
+    publicBaseUri.Fragment.Length != 0 || publicBaseUri.UserInfo.Length != 0 ||
+    (publicBaseUri.Scheme != "https" && (!builder.Environment.IsDevelopment() || publicBaseUri.Scheme != "http")))
+    throw new InvalidOperationException("Set Application__PublicBaseUrl to the public HTTPS origin (HTTP is allowed in Development).");
 builder.Services.AddHttpClient("AgrilocoApiClient", client =>
 {
-    client.BaseAddress = new Uri("http://localhost:5227/");
+    client.BaseAddress = new Uri(publicBaseUri.GetLeftPart(UriPartial.Authority) + "/");
 });
+builder.Services.AddHttpsRedirection(options => options.HttpsPort = 443);
 
 builder.Services.AddSingleton<IFarmAvailabilityAlertQueue, FarmAvailabilityAlertQueue>();
 builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
@@ -55,6 +69,13 @@ if (app.Environment.IsDevelopment())
     });
 }
 
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
+    app.UseHttpsRedirection();
+}
+
+app.UseDefaultFiles();
 app.UseStaticFiles(UnityWebGlStaticFiles.CreateOptions());
 app.UseRouting();
 app.UseAuthorization();
@@ -63,6 +84,9 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AgrilocoContext>();
 
+    // Production schema is applied separately using reviewed SQL Server migrations.
+    if (db.Database.IsSqlite() && app.Environment.IsDevelopment())
+    {
     db.Database.EnsureCreated();
     Agriloco1.Services.ProductionSourceSchema.EnsureCreated(db);
 
@@ -832,6 +856,7 @@ using (var scope = app.Services.CreateScope())
     }
     catch { }
     try { db.Database.ExecuteSqlRaw("ALTER TABLE Crops ADD COLUMN OfferingType TEXT;"); } catch { }
+    }
 }
 
 app.MapControllers();

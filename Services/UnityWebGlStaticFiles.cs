@@ -12,7 +12,7 @@ public static class UnityWebGlStaticFiles
         OnPrepareResponse = context =>
         {
             var path = context.Context.Request.Path.Value ?? "";
-            if (!path.StartsWith("/Unity/", StringComparison.OrdinalIgnoreCase)) return;
+            if (!(path.StartsWith("/Unity/", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/viewer/", StringComparison.OrdinalIgnoreCase))) return;
 
             if (path.EndsWith(".br", StringComparison.OrdinalIgnoreCase))
                 context.Context.Response.Headers.ContentEncoding = "br";
@@ -27,7 +27,7 @@ public static class UnityWebGlStaticFiles
 
         public bool TryGetContentType(string subpath, out string contentType)
         {
-            if (subpath.StartsWith("/Unity/", StringComparison.OrdinalIgnoreCase))
+            if (subpath.StartsWith("/Unity/", StringComparison.OrdinalIgnoreCase) || subpath.StartsWith("/viewer/", StringComparison.OrdinalIgnoreCase))
             {
                 var originalPath = subpath;
                 if (subpath.EndsWith(".br", StringComparison.OrdinalIgnoreCase) ||

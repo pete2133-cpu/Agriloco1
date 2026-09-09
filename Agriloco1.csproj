@@ -1,10 +1,17 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <DefaultItemExcludes>$(DefaultItemExcludes);.codex-build\**</DefaultItemExcludes>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Content Update="appsettings.json;appsettings.Development.json" CopyToPublishDirectory="Never" />
+    <Content Remove="**\*.db;**\*.db-shm;**\*.db-wal" />
+    <None Update="**\*.db;**\*.db-shm;**\*.db-wal" CopyToPublishDirectory="Never" />
+  </ItemGroup>
 
   <ItemGroup>
     <Compile Remove="Agriloco1__DUPLICATE_HOLD\**" />
@@ -40,9 +47,6 @@
 	  <Compile Remove="Controllers\CropSearchControllers.cs" />
 	  <Compile Remove="Controllers\WeatherForecastController.cs" />
 	  <Compile Remove="Dtos\CropSearchOut.cs" />
-	  <Compile Remove="Migrations\20260131165444_AddFarmMapLayout.cs" />
-	  <Compile Remove="Migrations\20260131165444_AddFarmMapLayout.Designer.cs" />
-	  <Compile Remove="Migrations\AgrilocoContextModelSnapshot.cs" />
 	  <Compile Remove="Services\CropBecameAvailableEvent.cs" />
 	</ItemGroup>
 	<ItemGroup>

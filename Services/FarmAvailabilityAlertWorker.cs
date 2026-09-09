@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,6 +12,7 @@ namespace Agriloco.Api.Services
 {
     public class FarmAvailabilityAlertWorker : BackgroundService
     {
+        private readonly string _publicBaseUrl;
         private readonly IFarmAvailabilityAlertQueue _queue;
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly ILogger<FarmAvailabilityAlertWorker> _logger;
@@ -19,8 +20,9 @@ namespace Agriloco.Api.Services
         public FarmAvailabilityAlertWorker(
             IFarmAvailabilityAlertQueue queue,
             IServiceScopeFactory scopeFactory,
-            ILogger<FarmAvailabilityAlertWorker> logger)
+            ILogger<FarmAvailabilityAlertWorker> logger, IConfiguration configuration)
         {
+            _publicBaseUrl = configuration["Application:PublicBaseUrl"]!.TrimEnd('/');
             _queue = queue;
             _scopeFactory = scopeFactory;
             _logger = logger;
@@ -76,7 +78,7 @@ namespace Agriloco.Api.Services
                         $"Good news!\n\n" +
                         $"{farmName} just updated {cropName} to AVAILABLE.\n\n" +
                         $"View the farm page:\n" +
-                        $"http://localhost:5227/public/farm?id={ev.FarmId}\n";
+                        $"{_publicBaseUrl}/public/farm?id={ev.FarmId}\n";
 
                     int sentCount = 0;
 
