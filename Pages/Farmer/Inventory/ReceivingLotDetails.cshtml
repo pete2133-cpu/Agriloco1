@@ -4,6 +4,16 @@
 <partial name="_InventoryNav" />
 <div class="inventory-page">
 <h1>Receiving Lot Details</h1>
+@if (Model.HarvestSource is { } source)
+{
+    <section class="harvest-source-card">
+        <h2>Original harvest source</h2>
+        <p><strong>@source.Farm</strong> · @source.Address</p>
+        <p>@source.Lot · @source.Crop / @source.Variety · @source.Row</p>
+        <p>Harvested @source.Date.ToString("yyyy-MM-dd") · Original harvest: @source.Quantity @source.Unit</p>
+        <p>@(Model.ReceivingLot.SourceHarvestLotId.HasValue ? "Linked to your harvest. Details saved at receiving." : "Imported farm-supplied details, saved at receiving.")</p>
+    </section>
+}
 
 <p>
     <a href="/Farmer/Inventory/ReceivingLots?farmId=@Model.FarmId">← Back to Receiving Lots</a>

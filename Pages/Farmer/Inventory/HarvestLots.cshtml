@@ -120,7 +120,7 @@
                             <button type="submit">Toggle Status</button>
                         </form>
 
-                        <a href="/Farmer/Inventory/HarvestLotDetails?id=@lot.Id&farmId=@Model.FarmId" style="margin-left:8px;">Add +</a>
+                        <a href="/Farmer/Inventory/HarvestLotDetails?id=@lot.Id&farmId=@Model.FarmId" style="margin-left:8px;">Details</a> <a href="/Farmer/Inventory/HarvestLabel?id=@lot.Id&farmId=@Model.FarmId">QR label</a> <a href="/Farmer/Inventory/ReceivingLots?farmId=@Model.FarmId&harvestId=@lot.Id">Receive</a>
 
                         <form method="post" asp-page-handler="Delete" style="display:inline; margin-left:8px;"
                               onsubmit="return confirm('Delete this harvest lot? This cannot be undone.');">

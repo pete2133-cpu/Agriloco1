@@ -114,3 +114,18 @@ body .inventory-page > form[method=post] > .harvest-validation,
 body .inventory-page > form[method=post] > .harvest-source-help { flex-basis:100%; }
 body .inventory-page > form[method=post] > .validation-summary-valid { display:none; }
 .harvest-source-help { font-size:13px; color:var(--muted); margin:0; }
+
+.harvest-source-card { margin: 1rem 0 1.5rem; padding: 1.25rem; background: #f3f7f1; border: 1px solid #cddcc7; border-radius: 12px; }
+.harvest-source-card label { display: block; margin-top: .9rem; }
+.harvest-source-card select, .harvest-source-card textarea, .harvest-label textarea { width: 100%; max-width: 100%; }
+.harvest-source-card video { width: 100%; max-width: 480px; margin-top: 1rem; }
+.harvest-source-card [hidden] { display: none !important; }
+.harvest-label { max-width: 760px; }
+.harvest-qr { width: 420px; max-width: 100%; height: auto; image-rendering: pixelated; }
+.label-actions { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; }
+@media print {
+    body:has(.harvest-label) header, body:has(.harvest-label) nav,
+    body:has(.harvest-label) footer, .harvest-label .label-actions { display: none !important; }
+    .harvest-label { color: #000; background: #fff; margin: 0; break-inside: avoid; }
+    .harvest-qr { width: 100mm; max-width: 100%; }
+}

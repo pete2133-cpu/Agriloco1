@@ -28,6 +28,40 @@
 
 <form method="post" asp-page-handler="Create" style="margin-bottom:30px;">
     <input type="hidden" asp-for="FarmId" />
+    <section class="harvest-source-card">
+        <h3>Where is this delivery from?</h3>
+        <label for="harvestSourceMode">Harvest source</label>
+        <select asp-for="NewReceiving.SourceMode" id="harvestSourceMode">
+            <option value="manual">Supplier delivery without a harvest record</option>
+            <option value="own">One of my harvests</option>
+            <option value="qr">Scan another farm's harvest</option>
+        </select>
+        <div id="ownHarvestPanel">
+            <label asp-for="NewReceiving.HarvestId">Choose your saved harvest</label>
+            <select asp-for="NewReceiving.HarvestId">
+                <option value="">Select a harvest...</option>
+                @foreach (var harvest in Model.HarvestOptions)
+                {
+                    <option value="@harvest.Id">@harvest.LotNumber · @harvest.CropName / @harvest.VarietyName · @harvest.Location · @harvest.HarvestDate.ToString("yyyy-MM-dd") · @harvest.Quantity @harvest.Unit</option>
+                }
+            </select>
+            @if (!Model.HarvestOptions.Any()) { <p>No harvests saved for this farm yet. Record a harvest first, or use a supplier delivery.</p> }
+        </div>
+        <div id="qrHarvestPanel">
+            <p>Scan an Agriloco harvest label from a screen or paper, or upload its QR image. Details stay on this device until you record the delivery.</p>
+            <button type="button" id="startHarvestCamera">Scan with camera</button>
+            <button type="button" id="stopHarvestCamera" hidden>Stop camera</button>
+            <label for="harvestQrFile">Upload QR image</label>
+            <input type="file" id="harvestQrFile" accept="image/*" />
+            <video id="harvestVideo" playsinline muted hidden></video>
+            <p id="harvestScanStatus" role="status" aria-live="polite"></p>
+            <label asp-for="NewReceiving.HarvestPayload">Harvest transfer text (scanner or paste)</label>
+            <textarea asp-for="NewReceiving.HarvestPayload" rows="3" maxlength="2000"></textarea>
+            <p id="harvestSourcePreview"></p>
+            <p>Review the farm-supplied details before saving. QR contents are not independently verified.</p>
+        </div>
+        <p>Choose the matching inventory item below and enter only the amount received in this delivery. The original harvest quantity is kept as source information; recording a receipt does not reduce the harvest.</p>
+    </section>
 
     <div>
         <label>Received Date</label><br />
@@ -41,8 +75,8 @@
         <input asp-for="NewReceiving.SupplierSearch"
                list="supplierList"
                placeholder="Start typing supplier..."
-               style="width:450px;"
-               required />
+               style="width:450px;" />
+        <small>Required for a supplier delivery. With a harvest source, leave blank to use its farm name, or select your supplier record.</small>
 
         <datalist id="supplierList">
             @foreach (var supplier in Model.SupplierOptions)
@@ -154,7 +188,7 @@
                     <td>@(string.IsNullOrWhiteSpace(lot.StorageLocation) ? "-" : lot.StorageLocation)</td>
                     <td>@lot.Status</td>
                     <td>
-                        <a href="/Farmer/Inventory/ReceivingLotDetails?id=@lot.Id&farmId=@Model.FarmId">Add +</a>
+                        <a href="/Farmer/Inventory/ReceivingLotDetails?id=@lot.Id&farmId=@Model.FarmId">Details</a>
 
                         <form method="post" asp-page-handler="Delete" style="display:inline; margin-left:8px;"
                               onsubmit="return confirm('Delete this receiving lot?');">
@@ -210,3 +244,6 @@
     document.getElementById("itemSearchBox").addEventListener("input", refreshVariationList);
 </script>
 </div>
+
+<script src="~/lib/jsqr/jsQR.js" asp-append-version="true"></script>
+<script src="~/js/receiving-harvest.js" asp-append-version="true"></script>

@@ -3,7 +3,7 @@
 
 <partial name="_InventoryNav" />
 <div class="inventory-page">
-<h1>Harvest Lot Details</h1>
+<h1>Harvest Lot Details</h1><p><a asp-page="HarvestLabel" asp-route-id="@Model.HarvestLot.Id" asp-route-farmId="@Model.FarmId">Show / print harvest QR label</a></p>
 
 <p>
     <a href="/Farmer/Inventory/HarvestLots?farmId=@Model.FarmId">← Back to Harvest Lots</a>

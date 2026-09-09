@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using System.Net;
+using Agriloco1.Services;
 
 namespace Agriloco1.Pages.Farmer.Inventory
 {
@@ -25,6 +26,7 @@ namespace Agriloco1.Pages.Farmer.Inventory
         [BindProperty]
         public NewReceivingInput NewReceiving { get; set; } = new();
 
+        public List<HarvestLot> HarvestOptions { get; set; } = new();
         public List<ReceivingLot> ReceivingLots { get; set; } = new();
 
         public List<SupplierOption> SupplierOptions { get; set; } = new();
@@ -37,9 +39,12 @@ namespace Agriloco1.Pages.Farmer.Inventory
 
         public async Task OnGetAsync()
         {
-            NewReceiving.ReceivedDate = DateTime.Today;
-
             await LoadOptionsAsync();
+            if (Request?.Method == "GET" && int.TryParse(Request.Query["harvestId"], out var harvestId))
+            {
+                NewReceiving.SourceMode = "own";
+                NewReceiving.HarvestId = harvestId;
+            }
 
             var query = _db.ReceivingLots
                 .Where(x => x.FarmId == FarmId)
@@ -65,11 +70,29 @@ namespace Agriloco1.Pages.Farmer.Inventory
 
         public async Task<IActionResult> OnPostCreateAsync()
         {
+            HarvestTransfer? source = null;
+            if (NewReceiving.SourceMode == "own")
+            {
+                var harvest = await _db.HarvestLots.AsNoTracking().FirstOrDefaultAsync(x => x.Id == NewReceiving.HarvestId && x.FarmId == FarmId);
+                var farm = await _db.Farms.AsNoTracking().FirstOrDefaultAsync(x => x.Id == FarmId);
+                if (harvest != null && farm != null)
+                    HarvestTransfer.TryParse(HarvestTransfer.From(harvest, farm).Encode(), out source);
+            }
+            else if (NewReceiving.SourceMode == "qr")
+                HarvestTransfer.TryParse(NewReceiving.HarvestPayload?.Trim(), out source);
+            if ((NewReceiving.SourceMode != "manual" && source == null)
+                || !new[] { "manual", "own", "qr" }.Contains(NewReceiving.SourceMode)
+                || !ModelState.IsValid || NewReceiving.ReceivedDate == default)
+            {
+                ErrorMessage = "Select your harvest or scan a valid Agriloco harvest QR, and check the date and quantity.";
+                await OnGetAsync();
+                return Page();
+            }
             var supplierId = ExtractLeadingId(NewReceiving.SupplierSearch);
             var itemId = ExtractLeadingId(NewReceiving.ItemSearch);
             var packageId = ExtractLeadingId(NewReceiving.ItemVariationSearch);
 
-            if (supplierId == null ||
+            if ((supplierId == null && source == null) ||
                 itemId == null ||
                 NewReceiving.UnitsReceived <= 0)
             {
@@ -84,7 +107,7 @@ namespace Agriloco1.Pages.Farmer.Inventory
             var item = await _db.InventoryItems
                 .FirstOrDefaultAsync(x => x.Id == itemId && x.FarmId == FarmId);
 
-            if (supplier == null || item == null)
+            if ((supplier == null && (source == null || !string.IsNullOrWhiteSpace(NewReceiving.SupplierSearch))) || item == null)
             {
                 ErrorMessage = "The selected supplier or item could not be found.";
                 await OnGetAsync();
@@ -144,8 +167,8 @@ namespace Agriloco1.Pages.Farmer.Inventory
                 LotNumber = "",
                 ReceivedDate = NewReceiving.ReceivedDate,
 
-                SupplierId = supplier.Id,
-                SupplierName = supplier.SupplierName,
+                SupplierId = supplier?.Id,
+                SupplierName = supplier?.SupplierName ?? source!.Farm,
 
                 InventoryItemId = item.Id,
                 InventoryItemName = item.ItemName,
@@ -175,18 +198,25 @@ namespace Agriloco1.Pages.Farmer.Inventory
                 PhotoCount = 0,
                 DocumentCount = 0,
 
-                SourceHarvestLotId = null,
+                SourceHarvestLotId = NewReceiving.SourceMode == "own" ? NewReceiving.HarvestId : null,
 
                 Notes = "",
                 CreatedAt = DateTime.Now
             };
 
+            await using var transaction = await _db.Database.BeginTransactionAsync();
             _db.ReceivingLots.Add(lot);
             await _db.SaveChangesAsync();
 
+            if (source != null)
+                _db.ReceivingLotCustomFields.Add(new ReceivingLotCustomField {
+                    FarmId = FarmId, ReceivingLotId = lot.Id,
+                    FieldName = HarvestTransfer.FieldName, FieldValue = source.Encode()
+                });
             lot.LotNumber = $"REC-{lot.ReceivedDate:yyyyMMdd}-{lot.Id:000}";
             await _db.SaveChangesAsync();
 
+            await transaction.CommitAsync();
             return RedirectToPage(new { farmId = FarmId });
         }
 
@@ -213,6 +243,7 @@ namespace Agriloco1.Pages.Farmer.Inventory
 
         private async Task LoadOptionsAsync()
         {
+            HarvestOptions = await _db.HarvestLots.AsNoTracking().Where(x => x.FarmId == FarmId).OrderByDescending(x => x.HarvestDate).ThenByDescending(x => x.Id).ToListAsync();
             SupplierOptions = await _db.Suppliers
                 .Where(x => x.FarmId == FarmId && x.IsActive)
                 .OrderBy(x => x.SupplierName)
@@ -278,12 +309,12 @@ namespace Agriloco1.Pages.Farmer.Inventory
                 .ToDictionary(
                     group => group.Key,
                     group => string.Join("<br />", group.Select(field =>
-                        $"<strong>{WebUtility.HtmlEncode(field.FieldName)}:</strong> {WebUtility.HtmlEncode(field.FieldValue)}"
+                        $"<strong>{WebUtility.HtmlEncode(field.FieldName == HarvestTransfer.FieldName ? "Harvest source" : field.FieldName)}:</strong> {WebUtility.HtmlEncode(field.FieldName == HarvestTransfer.FieldName && HarvestTransfer.TryParse(field.FieldValue, out var harvest) ? harvest!.Summary : field.FieldValue)}"
                     ))
                 );
         }
 
-        private static int? ExtractLeadingId(string value)
+        private static int? ExtractLeadingId(string? value)
         {
             if (string.IsNullOrWhiteSpace(value))
                 return null;
@@ -298,10 +329,13 @@ namespace Agriloco1.Pages.Farmer.Inventory
 
         public class NewReceivingInput
         {
+            public string SourceMode { get; set; } = "manual";
+            public int? HarvestId { get; set; }
+            public string? HarvestPayload { get; set; }
             public DateTime ReceivedDate { get; set; } = DateTime.Today;
-            public string SupplierSearch { get; set; } = "";
+            public string? SupplierSearch { get; set; } = "";
             public string ItemSearch { get; set; } = "";
-            public string ItemVariationSearch { get; set; } = "";
+            public string? ItemVariationSearch { get; set; } = "";
             public decimal UnitsReceived { get; set; }
         }
 

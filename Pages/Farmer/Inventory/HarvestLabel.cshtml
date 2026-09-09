@@ -1,0 +1,23 @@
+@page
+@model Agriloco1.Pages.Farmer.Inventory.HarvestLabelModel
+<div class="inventory-page harvest-label">
+    <div class="label-actions">
+        <a asp-page="HarvestLots" asp-route-farmId="@Model.FarmId">Back to harvests</a>
+        <button type="button" onclick="window.print()">Print label / Save PDF</button>
+        <a asp-page="ReceivingLots" asp-route-farmId="@Model.FarmId" asp-route-harvestId="@Model.Id">Receive this harvest</a>
+    </div>
+    <h1>Harvest source</h1>
+    @if (Model.Error != null) { <p role="alert">@Model.Error</p> }
+    else
+    {
+        <h2>@Model.Source.Farm</h2>
+        <p>@Model.Source.Address</p>
+        <p><strong>@Model.Source.Lot</strong></p>
+        <p>@Model.Source.Crop / @Model.Source.Variety · @Model.Source.Row</p>
+        <p>Harvested @Model.Source.Date.ToString("yyyy-MM-dd") · @Model.Source.Quantity @Model.Source.Unit</p>
+        <img src="@Model.Image" alt="Scannable harvest source QR code" class="harvest-qr" />
+        <p>In Agriloco Receiving, choose “Scan another farm’s harvest”.</p>
+        <p>Farm-supplied harvest details. This label describes the original harvest, not the delivery quantity.</p>
+        <details class="label-actions"><summary>Copy transfer text instead</summary><textarea readonly rows="8" aria-label="Harvest transfer text">@Model.Payload</textarea></details>
+    }
+</div>
