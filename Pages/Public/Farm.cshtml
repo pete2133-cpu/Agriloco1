@@ -25,14 +25,14 @@
 <!-- ✅ Notify status message -->
 <div id="agrilocoNotifyMsg" class="alert d-none" role="alert"></div>
 
-@if (Model.Crops == null || Model.Crops.Count == 0)
+@if (Model.FoodListings.Count == 0)
 {
     <div class="text-muted">No crops listed for this farm yet.</div>
 }
 else
 {
     <ul class="farm-products">
-        @foreach (var c in Model.Crops)
+        @foreach (var c in Model.FoodListings)
         {
             <li style="margin-bottom:8px;">
                 <strong>@c.Category</strong>
@@ -42,9 +42,10 @@ else
                 }
 
                 <span class="badge" data-status="@c.Availability">@(string.IsNullOrWhiteSpace(c.Availability) ? "Check with farm" : c.Availability == "NotAvailable" ? "Unavailable" : c.Availability)</span>
-<span class="text-muted">@(c.OfferingType == "PickYourOwn" ? "Pick your own" : c.OfferingType == "ReadyPicked" ? "Ready picked" : c.OfferingType)</span>
+<span class="text-muted">@c.SalesMethods</span>
 
-                <!-- ✅ Email subscribe button -->
+                <!-- Preserve existing legacy crop subscriptions; never send a definition ID. -->
+                @if (c.Id > 0) {
                 <button type="button"
                         class="btn btn-sm btn-outline-primary agriloco-notify-btn"
                         style="margin-left:10px;"
@@ -52,6 +53,7 @@ else
                         data-cropid="@c.Id">
                     Email me when available
                 </button>
+                }
             </li>
         }
     </ul>

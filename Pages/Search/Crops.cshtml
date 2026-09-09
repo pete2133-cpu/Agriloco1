@@ -30,6 +30,10 @@
             <option value="" selected="@(string.IsNullOrEmpty(Model.OfferingType) ? "selected" : null)">Any</option>
             <option value="PickYourOwn" selected="@(Model.OfferingType == "PickYourOwn" ? "selected" : null)">Pick your own</option>
             <option value="ReadyPicked" selected="@(Model.OfferingType == "ReadyPicked" ? "selected" : null)">Ready picked</option>
+                        <option value="FarmStore" selected="@(Model.OfferingType == "FarmStore" ? "selected" : null)">Farm shop</option>
+            <option value="Wholesale" selected="@(Model.OfferingType == "Wholesale" ? "selected" : null)">Wholesale</option>
+            <option value="RetailPartner" selected="@(Model.OfferingType == "RetailPartner" ? "selected" : null)">Retail partner</option>
+            <option value="FarmersMarket" selected="@(Model.OfferingType == "FarmersMarket" ? "selected" : null)">Farmers market</option>
             <option value="Frozen" selected="@(Model.OfferingType == "Frozen" ? "selected" : null)">Frozen</option>
         </select>
     </div>
@@ -39,6 +43,7 @@
         <select id="Availability" name="Availability">
             <option value="" selected="@(string.IsNullOrEmpty(Model.Availability) ? "selected" : null)">Any</option>
             <option value="Available" selected="@(Model.Availability == "Available" ? "selected" : null)">Available</option>
+            <option value="Coming Soon" selected="@(Model.Availability == "Coming Soon" ? "selected" : null)">Coming soon</option>
             <option value="NotAvailable" selected="@(Model.Availability == "NotAvailable" ? "selected" : null)">Unavailable</option>
         </select>
     </div>
@@ -67,7 +72,7 @@
                 @if (!string.IsNullOrWhiteSpace(c.Variety)) { <p>@c.Variety</p> }
                 <p><strong>@(Model.FarmNames.GetValueOrDefault(c.FarmId, "Local farm"))</strong></p>
                 @if (Model.FarmAddresses.TryGetValue(c.FarmId, out var address) && !string.IsNullOrWhiteSpace(address)) { <p class="text-muted">@address</p> }
-                <p class="text-muted">@(c.OfferingType == "PickYourOwn" ? "Pick your own" : c.OfferingType == "ReadyPicked" ? "Ready picked" : string.IsNullOrWhiteSpace(c.OfferingType) ? "Contact the farm for buying options" : c.OfferingType)</p>
+                <p class="text-muted">@(string.IsNullOrWhiteSpace(c.SalesMethods) ? "Contact the farm for buying options" : c.SalesMethods)</p>
                 <a class="btn" asp-page="/Public/Farm" asp-route-id="@c.FarmId">View farm &amp; details →</a>
             </article>
         }

@@ -492,7 +492,7 @@
 
                                 <input type="hidden"
                                        name="isEnabled"
-                                       value="@(!enabled)" />
+                                       value="@(enabled ? "false" : "true")" />
 
                                 <label class="channel-option">
 
@@ -527,7 +527,7 @@
 
                             <input type="hidden"
                                    name="isPublic"
-                                   value="@(!item.IsPublic)" />
+                                   value="@(item.IsPublic ? "false" : "true")" />
 
                             <label class="visibility-label"><input type="checkbox"
                                    checked="@item.IsPublic"
