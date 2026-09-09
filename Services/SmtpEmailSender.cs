@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Net.Mail;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
@@ -79,7 +79,8 @@ namespace Agriloco.Api.Services
                     user,
                     pass);
 
-            await client.SendMailAsync(msg);
+            using var timeout = new System.Threading.CancellationTokenSource(System.TimeSpan.FromSeconds(20));
+            await client.SendMailAsync(msg, timeout.Token);
         }
     }
 }

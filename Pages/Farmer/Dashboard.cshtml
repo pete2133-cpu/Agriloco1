@@ -4,6 +4,10 @@
     ViewData["Title"] = "Farm Dashboard";
 }
 
+@if (TempData["AvailabilityEmailMessage"] is string emailMessage)
+{
+    <p class="alert alert-info" role="status">@emailMessage</p>
+}
 <style>
     .dashboard-wrap {
         max-width: 1500px;
