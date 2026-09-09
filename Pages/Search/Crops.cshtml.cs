@@ -1,4 +1,7 @@
-﻿using System.Net.Http.Json;
+using Agriloco.Api.Services;
+using Agriloco.Api.Data;
+using Microsoft.EntityFrameworkCore;
+using System.Data.Common;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -8,11 +11,13 @@ namespace agriloco.api.Pages.Search
 {
     public class CropsModel : PageModel
     {
-        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly AgrilocoContext _db;
+        public Dictionary<int, string> FarmNames { get; private set; } = new();
+        public Dictionary<int, string> FarmAddresses { get; private set; } = new();
 
-        public CropsModel(IHttpClientFactory httpClientFactory)
+        public CropsModel(AgrilocoContext db)
         {
-            _httpClientFactory = httpClientFactory;
+            _db = db;
         }
 
         [BindProperty(SupportsGet = true)]
@@ -30,7 +35,7 @@ namespace agriloco.api.Pages.Search
         // categories for the autocomplete datalist
         public List<string> CategorySuggestions { get; set; } = new();
 
-        public List<CropSearchOut> Results { get; set; } = new();
+        public List<PublicFoodListing> Results { get; set; } = new();
 
         // NEW: points to plot on the map
         public List<MapPoint> MapPoints { get; set; } = new();
@@ -42,52 +47,35 @@ namespace agriloco.api.Pages.Search
 
         public async Task OnGetAsync()
         {
-            var client = _httpClientFactory.CreateClient("AgrilocoApiClient");
-
-            // Load category suggestions for datalist
-            var catsResp = await client.GetAsync("api/Crops/categories");
-            if (catsResp.IsSuccessStatusCode)
+            try { await LoadResultsAsync(); }
+            catch (Exception ex) when (ex is DbException || ex is TaskCanceledException || ex is JsonException)
             {
-                var cats = await catsResp.Content.ReadFromJsonAsync<List<string>>();
-                CategorySuggestions = cats ?? new List<string>();
+                Message = "We could not load the food listings. Please try again.";
+                Results = new();
             }
-            else
-            {
-                CategorySuggestions = new List<string>();
-            }
+        }
 
-            // Build API URL with optional query parameters
-            var qs = new List<string>();
-
-            if (!string.IsNullOrWhiteSpace(OfferingType))
-                qs.Add($"offeringType={Uri.EscapeDataString(OfferingType.Trim())}");
-
-            if (!string.IsNullOrWhiteSpace(Availability))
-                qs.Add($"availability={Uri.EscapeDataString(Availability.Trim())}");
-
-            var url = "api/Crops/public";
-            if (qs.Count > 0)
-                url += "?" + string.Join("&", qs);
-
-            var resp = await client.GetAsync(url);
-            if (!resp.IsSuccessStatusCode)
-            {
-                Message = $"Error loading crops: {(int)resp.StatusCode} {resp.ReasonPhrase}";
-                Results = new List<CropSearchOut>();
-                MapPoints = new List<MapPoint>();
-                MapPointsJson = "[]";
-                return;
-            }
-
-            var crops = await resp.Content.ReadFromJsonAsync<List<CropSearchOut>>();
-            var list = crops ?? new List<CropSearchOut>();
+        private async Task LoadResultsAsync()
+        {
+            var list = await PublicFoodCatalog.LoadAsync(_db);
+            CategorySuggestions = list.Select(c => c.Category).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(c => c).ToList();
+            if (!string.IsNullOrWhiteSpace(OfferingType)) list = list.Where(c => c.SalesMethodCodes.Contains(OfferingType.Trim(), StringComparer.OrdinalIgnoreCase)).ToList();
+            if (Availability == "Available") list = list.Where(c => PublicFoodCatalog.IsAvailable(c.Availability)).ToList();
+            else if (Availability == "NotAvailable") list = list.Where(c => !PublicFoodCatalog.IsAvailable(c.Availability)).ToList();
+            else if (!string.IsNullOrWhiteSpace(Availability)) list = list.Where(c => string.Equals(c.Availability, Availability.Trim(), StringComparison.OrdinalIgnoreCase)).ToList();
+            // Read-only farm metadata for the website results.
+            var farmIds = list.Select(c => c.FarmId).Distinct().ToList();
+            var farms = await _db.Farms.AsNoTracking().Where(f => farmIds.Contains(f.Id))
+                .Select(f => new { f.Id, f.Name, f.Address }).ToListAsync();
+            FarmNames = farms.ToDictionary(f => f.Id, f => f.Name);
+            FarmAddresses = farms.ToDictionary(f => f.Id, f => f.Address ?? "");
 
             // Client-side contains filters
             if (!string.IsNullOrWhiteSpace(Category))
             {
                 var cat = Category.Trim();
                 list = list
-                    .Where(c => (c.Category ?? "").Contains(cat, StringComparison.OrdinalIgnoreCase))
+                    .Where(c => (PublicFoodCatalog.Matches(c.Category, cat) || PublicFoodCatalog.Matches(c.Variety, cat)))
                     .ToList();
             }
 
@@ -95,7 +83,7 @@ namespace agriloco.api.Pages.Search
             {
                 var v = Variety.Trim();
                 list = list
-                    .Where(c => (c.Variety ?? "").Contains(v, StringComparison.OrdinalIgnoreCase))
+                    .Where(c => PublicFoodCatalog.Matches(c.Variety, v))
                     .ToList();
             }
 
@@ -125,7 +113,7 @@ namespace agriloco.api.Pages.Search
             public string? OfferingType { get; set; }
         }
 
-        private static List<MapPoint> BuildMapPointsFromResults(List<CropSearchOut> results)
+        private static List<MapPoint> BuildMapPointsFromResults(List<PublicFoodListing> results)
         {
             var points = new List<MapPoint>();
             if (results == null || results.Count == 0) return points;

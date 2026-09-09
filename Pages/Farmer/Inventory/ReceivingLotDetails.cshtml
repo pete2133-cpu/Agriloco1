@@ -1,7 +1,19 @@
-﻿@page
+@page
 @model Agriloco1.Pages.Farmer.Inventory.ReceivingLotDetailsModel
 
-<h1>Receiving Lot Details</h1>
+<partial name="_InventoryNav" />
+<div class="inventory-page">
+<h1>Receiving Lot Details</h1><p><a asp-page="ReceivingLabel" asp-route-id="@Model.ReceivingLot.Id" asp-route-farmId="@Model.FarmId">Show / print receiving QR label</a></p>
+@if (Model.HarvestSource is { } source)
+{
+    <section class="harvest-source-card">
+        <h2>Original harvest source</h2>
+        <p><strong>@source.Farm</strong> · @source.Address</p>
+        <p>@source.Lot · @source.Crop / @source.Variety · @source.Row</p>
+        <p>Harvested @source.Date.ToString("yyyy-MM-dd") · Original harvest: @source.Quantity @source.Unit</p>
+        <p>@(Model.ReceivingLot.SourceHarvestLotId.HasValue ? "Linked to your harvest. Details saved at receiving." : "Imported farm-supplied details, saved at receiving.")</p>
+    </section>
+}
 
 <p>
     <a href="/Farmer/Inventory/ReceivingLots?farmId=@Model.FarmId">← Back to Receiving Lots</a>
@@ -30,7 +42,8 @@
     <p>
         <strong>Supplier:</strong> @Model.ReceivingLot.SupplierName<br />
         <strong>Item:</strong> @Model.ReceivingLot.InventoryItemName<br />
-        <strong>Variation:</strong> @Model.ReceivingLot.VariationName
+        <strong>Crop variety:</strong> @(Model.HarvestSource?.Variety ?? "—")<br />
+        <strong>Receiving unit:</strong> @(Model.ReceivingLot.InventoryItemPackageId.HasValue ? Model.ReceivingLot.VariationName : Model.ReceivingLot.UsableUnit)
     </p>
 
     <p>
@@ -190,3 +203,4 @@
         }
     </tbody>
 </table>
+</div>

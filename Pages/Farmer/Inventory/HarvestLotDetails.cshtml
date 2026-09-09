@@ -1,14 +1,17 @@
-﻿@page
+@page
 @model Agriloco1.Pages.Farmer.Inventory.HarvestLotDetailsModel
 
-<h1>Harvest Lot Details</h1>
+<partial name="_InventoryNav" />
+<div class="inventory-page">
+<h1>Harvest Lot Details</h1><p><a asp-page="HarvestLabel" asp-route-id="@Model.HarvestLot.Id" asp-route-farmId="@Model.FarmId">Show / print harvest QR label</a></p>
 
 <p>
-    <a href="/Farmer/Inventory/HarvestLots">← Back to Harvest Lots</a>
+    <a href="/Farmer/Inventory/HarvestLots?farmId=@Model.FarmId">← Back to Harvest Lots</a>
 </p>
 
 <form method="post">
     <input type="hidden" asp-for="HarvestLot.Id" />
+    <input type="hidden" asp-for="FarmId" />
 
     <div>
         <label><strong>Lot Number</strong></label><br />
@@ -115,3 +118,4 @@
 
     <button type="submit">Save Details</button>
 </form>
+</div>

@@ -1,4 +1,7 @@
-﻿@page
+@page
 @model Agriloco1.Pages.Farmer.Inventory.FinishedProductsModel
-@{
-}
+@{ ViewData["Title"] = "Finished products"; var farmId = int.TryParse(Request.Query["farmId"], out var f) && f > 0 ? f : 1; }
+<partial name="_InventoryNav" />
+<div class="inventory-page">
+<h1>Finished products</h1><p class="section-intro">Use stock items to view finished-product entries, or open a production batch for its output details.</p><div class="tool-grid"><a class="tool-card" asp-page="InventoryItems" asp-route-farmId="@farmId"><h2>Stock items</h2><p>Manage ingredients, produce and packaging.</p></a><a class="tool-card" asp-page="ProductionRuns" asp-route-farmId="@farmId"><h2>Production</h2><p>Start a batch and review production progress.</p></a></div>
+</div>

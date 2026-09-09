@@ -1,9 +1,13 @@
-﻿@page
+@page
 @model Agriloco1.Pages.Farmer.DashboardModel
 @{
     ViewData["Title"] = "Farm Dashboard";
 }
 
+@if (TempData["AvailabilityEmailMessage"] is string emailMessage)
+{
+    <p class="alert alert-info" role="status">@emailMessage</p>
+}
 <style>
     .dashboard-wrap {
         max-width: 1500px;
@@ -69,11 +73,47 @@
            ============================================================ */
 
     .basemap-panel {
-        margin-bottom: 24px;
-        padding: 18px;
+        margin-top: 24px;
+        padding: 0;
         border: 1px solid #d6d6d6;
         border-radius: 8px;
         background: white;
+    }
+
+    .basemap-summary {
+        padding: 18px;
+        cursor: pointer;
+        font-size: 18px;
+        font-weight: 600;
+    }
+
+    .basemap-summary:focus-visible {
+        outline: 2px solid #222;
+        outline-offset: 3px;
+    }
+
+    .basemap-body {
+        padding: 0 18px 18px;
+    }
+
+    @@media (max-width: 600px) {
+        .dashboard-wrap {
+            padding: 16px;
+        }
+
+        .dashboard-header {
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .dashboard-title {
+            font-size: 28px;
+        }
+
+        .basemap-file {
+            box-sizing: border-box;
+            max-width: 100%;
+        }
     }
 
     .basemap-header {
@@ -266,7 +306,7 @@
             </h1>
 
             <div class="dashboard-subtitle">
-                Availability Control
+                Products & availability
             </div>
 
         </div>
@@ -276,18 +316,18 @@
             <a class="action-button primary-button"
                asp-page="/Farmer/Add"
                asp-route-farmId="@Model.FarmId">
-                + Add
+                Add crop or product
             </a>
 
             <a class="action-button"
-               asp-page="/Farmer/Record"
+               asp-page="/Farmer/Inventory/ProcessRecords"
                asp-route-farmId="@Model.FarmId">
                 Record Activity
             </a>
 
             <a class="action-button"
-               href="/unity/index.html?farmId=@Model.FarmId">
-                Open Map
+               href="@Url.Content("~/Public/Farm")?id=@Model.FarmId">
+                View public farm
             </a>
 
         </div>
@@ -295,10 +335,230 @@
     </div>
 
     <!-- ============================================================
+         AVAILABILITY CONTROL
+         ============================================================ -->
+
+    <div class="control-panel">
+
+        @if (Model.FarmDefinitions.Count == 0)
+        {
+            <div class="empty-panel">
+
+                <h3>
+                    No crops or products have been added yet.
+                </h3>
+
+                <p>
+                    Add a crop or product,
+                    then control availability
+                    from this page.
+                </p>
+
+                <a class="action-button primary-button"
+                   asp-page="/Farmer/Add"
+                   asp-route-farmId="@Model.FarmId">
+                    Add your first crop or product
+                </a>
+
+            </div>
+        }
+        else
+        {
+            <div class="control-header">
+
+                <div>
+                    Item
+                </div>
+
+                <div>
+                    Status
+                </div>
+
+                <div>
+                    Available Through
+                </div>
+
+                <div style="text-align:center;">
+                    Public
+                </div>
+
+            </div>
+
+            @foreach (var item
+                    in Model.FarmDefinitions)
+            {
+                var depth =
+                Model.GetDepth(item);
+
+                var leftPadding =
+                8 + (depth * 28);
+
+                <div class="definition-row @(item.DefinitionType == "Location" ? "location-row" : "")">
+
+                    <!-- ITEM -->
+
+                    <div style="padding-left:@(leftPadding)px;">
+
+                        <span class="definition-name">
+
+                            @if (depth > 0)
+                            {
+                                <span>
+                                    ↳
+                                </span>
+                            }
+
+                            @item.DisplayName
+
+                        </span>
+
+                        @if (!string.IsNullOrWhiteSpace(
+                                        item.DefinitionType))
+                        {
+                            <span class="definition-type">
+                                @item.DefinitionType
+                            </span>
+                        }
+
+                    </div>
+
+                    <!-- STATUS -->
+
+                    <div>
+
+                        <form method="post"
+                              asp-page-handler="Status">
+
+                            <input type="hidden"
+                                   name="farmId"
+                                   value="@Model.FarmId" />
+
+                            <input type="hidden"
+                                   name="farmDefinitionId"
+                                   value="@item.Id" />
+
+                            <label class="mobile-label" for="status-@item.Id">Availability</label>
+                            <select id="status-@item.Id" aria-label="Availability for @item.DisplayName" class="status-select"
+                                    name="status"
+                                    onchange="this.form.submit()">
+
+                                @foreach (var status
+                                                        in Model.StatusOptions)
+                                {
+                                    if (item.Status == status)
+                                    {
+                                        <option value="@status"
+                                                selected>
+                                            @status
+                                        </option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@status">
+                                            @status
+                                        </option>
+                                    }
+                                }
+
+                            </select>
+
+                        </form>
+
+                    </div>
+
+                    <!-- AVAILABLE THROUGH -->
+
+                    <div><span class="mobile-label">Available through</span><div class="channel-list">
+
+                        @foreach (var channel
+                                        in Model.AvailabilityChannels)
+                        {
+                            var enabled =
+                            Model.IsChannelEnabled(
+                            item.Id,
+                            channel.Id);
+
+                            <form method="post"
+                                  asp-page-handler="Channel"
+                                  style="display:inline;">
+
+                                <input type="hidden"
+                                       name="farmId"
+                                       value="@Model.FarmId" />
+
+                                <input type="hidden"
+                                       name="farmDefinitionId"
+                                       value="@item.Id" />
+
+                                <input type="hidden"
+                                       name="availabilityChannelId"
+                                       value="@channel.Id" />
+
+                                <input type="hidden"
+                                       name="isEnabled"
+                                       value="@(enabled ? "false" : "true")" />
+
+                                <label class="channel-option">
+
+                                    <input type="checkbox"
+                                           aria-label="@channel.Name for @item.DisplayName" checked="@enabled"
+                                           onchange="this.form.submit()" />
+
+                                    @channel.Name
+
+                                </label>
+
+                            </form>
+                        }
+
+                    </div>
+
+                    </div>
+                    <!-- PUBLIC -->
+
+                    <div class="public-control">
+
+                        <form method="post"
+                              asp-page-handler="Public">
+
+                            <input type="hidden"
+                                   name="farmId"
+                                   value="@Model.FarmId" />
+
+                            <input type="hidden"
+                                   name="farmDefinitionId"
+                                   value="@item.Id" />
+
+                            <input type="hidden"
+                                   name="isPublic"
+                                   value="@(item.IsPublic ? "false" : "true")" />
+
+                            <label class="visibility-label"><input type="checkbox"
+                                   checked="@item.IsPublic"
+                                   onchange="this.form.submit()" /> Visible</label>
+
+                        </form>
+
+                    </div>
+
+                </div>
+            }
+        }
+
+    </div>
+
+    <div class="autosave-note">
+        Changes save automatically. Enabling a child also enables its parents. Disabling a parent turns off its descendants.
+        Enabling a parent does not enable its children. Visibility is managed separately.
+    </div>
+
+    <!-- ============================================================
          FARM BASEMAP
          ============================================================ -->
 
-    <div class="basemap-panel">
+    <details class="basemap-panel" open="@(!ViewData.ModelState.IsValid)">
+        <summary class="basemap-summary">Farm basemap setup</summary>
+        <div class="basemap-body">
 
         <div class="basemap-header">
 
@@ -394,239 +654,21 @@
         {
             <div class="basemap-meta">
 
-                Current map:
-                @Model.MapImageUrl
+                Map image saved.
 
                 @if (Model.MapImageUploadedAt.HasValue)
                 {
                     <span>
                         &nbsp; | &nbsp;
                         Uploaded:
-                        @Model.MapImageUploadedAt.Value
-                        .ToLocalTime()
-                        .ToString("MMM d, yyyy h:mm tt")
+                        @(Model.MapImageUploadedAt.Value.ToLocalTime().ToString("MMM d, yyyy h:mm tt"))
                     </span>
                 }
 
             </div>
         }
 
-    </div>
-
-    <!-- ============================================================
-         AVAILABILITY CONTROL
-         ============================================================ -->
-
-    <div class="control-panel">
-
-        @if (Model.FarmDefinitions.Count == 0)
-        {
-            <div class="empty-panel">
-
-                <h3>
-                    No items have been added yet.
-                </h3>
-
-                <p>
-                    Build your farm hierarchy,
-                    then control availability
-                    from this page.
-                </p>
-
-                <a class="action-button primary-button"
-                   asp-page="/Farmer/Add"
-                   asp-route-farmId="@Model.FarmId">
-                    + Add First Item
-                </a>
-
-            </div>
-        }
-        else
-        {
-            <div class="control-header">
-
-                <div>
-                    Item
-                </div>
-
-                <div>
-                    Status
-                </div>
-
-                <div>
-                    Available Through
-                </div>
-
-                <div style="text-align:center;">
-                    Public
-                </div>
-
-            </div>
-
-            @foreach (var item
-                    in Model.FarmDefinitions)
-            {
-                var depth =
-                Model.GetDepth(item);
-
-                var leftPadding =
-                8 + (depth * 28);
-
-                <div class="definition-row">
-
-                    <!-- ITEM -->
-
-                    <div style="padding-left:@(leftPadding)px;">
-
-                        <span class="definition-name">
-
-                            @if (depth > 0)
-                            {
-                                <span>
-                                    ↳
-                                </span>
-                            }
-
-                            @item.DisplayName
-
-                        </span>
-
-                        @if (!string.IsNullOrWhiteSpace(
-                                        item.DefinitionType))
-                        {
-                            <span class="definition-type">
-                                @item.DefinitionType
-                            </span>
-                        }
-
-                    </div>
-
-                    <!-- STATUS -->
-
-                    <div>
-
-                        <form method="post"
-                              asp-page-handler="Status">
-
-                            <input type="hidden"
-                                   name="farmId"
-                                   value="@Model.FarmId" />
-
-                            <input type="hidden"
-                                   name="farmDefinitionId"
-                                   value="@item.Id" />
-
-                            <select class="status-select"
-                                    name="status"
-                                    onchange="this.form.submit()">
-
-                                @foreach (var status
-                                                        in Model.StatusOptions)
-                                {
-                                    if (item.Status == status)
-                                    {
-                                        <option value="@status"
-                                                selected>
-                                            @status
-                                        </option>
-                                    }
-                                    else
-                                    {
-                                        <option value="@status">
-                                            @status
-                                        </option>
-                                    }
-                                }
-
-                            </select>
-
-                        </form>
-
-                    </div>
-
-                    <!-- AVAILABLE THROUGH -->
-
-                    <div class="channel-list">
-
-                        @foreach (var channel
-                                        in Model.AvailabilityChannels)
-                        {
-                            var enabled =
-                            Model.IsChannelEnabled(
-                            item.Id,
-                            channel.Id);
-
-                            <form method="post"
-                                  asp-page-handler="Channel"
-                                  style="display:inline;">
-
-                                <input type="hidden"
-                                       name="farmId"
-                                       value="@Model.FarmId" />
-
-                                <input type="hidden"
-                                       name="farmDefinitionId"
-                                       value="@item.Id" />
-
-                                <input type="hidden"
-                                       name="availabilityChannelId"
-                                       value="@channel.Id" />
-
-                                <input type="hidden"
-                                       name="isEnabled"
-                                       value="@(!enabled)" />
-
-                                <label class="channel-option">
-
-                                    <input type="checkbox"
-                                           checked="@enabled"
-                                           onchange="this.form.submit()" />
-
-                                    @channel.Name
-
-                                </label>
-
-                            </form>
-                        }
-
-                    </div>
-
-                    <!-- PUBLIC -->
-
-                    <div class="public-control">
-
-                        <form method="post"
-                              asp-page-handler="Public">
-
-                            <input type="hidden"
-                                   name="farmId"
-                                   value="@Model.FarmId" />
-
-                            <input type="hidden"
-                                   name="farmDefinitionId"
-                                   value="@item.Id" />
-
-                            <input type="hidden"
-                                   name="isPublic"
-                                   value="@(!item.IsPublic)" />
-
-                            <input type="checkbox"
-                                   checked="@item.IsPublic"
-                                   onchange="this.form.submit()" />
-
-                        </form>
-
-                    </div>
-
-                </div>
-            }
-        }
-
-    </div>
-
-    <div class="autosave-note">
-        Availability changes are saved when a
-        status or channel is changed.
-    </div>
+        </div>
+    </details>
 
 </div>

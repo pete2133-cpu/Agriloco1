@@ -1,6 +1,8 @@
-﻿@page
+@page
 @model Agriloco1.Pages.Farmer.Inventory.ProductionRunDetailsModel
 
+<partial name="_InventoryNav" />
+<div class="inventory-page">
 <h1>Production Run Details</h1>
 
 <p>
@@ -22,6 +24,31 @@
         @Model.SuccessMessage
     </div>
 }
+
+<h2>Recipe</h2>
+@if (Model.CanLoadRecipe)
+{
+    <form method="post" asp-page-handler="LoadRecipe">
+        <input type="hidden" name="runId" value="@Model.ProductionRun.Id" />
+        <input type="hidden" name="farmId" value="@Model.FarmId" />
+        <label for="productionRecipe">Load a saved recipe</label>
+        <select id="productionRecipe" name="recipeId" required>
+            <option value="">Choose recipe...</option>
+            @foreach (var recipe in Model.RecipeOptions)
+            {
+                <option value="@recipe.Id" selected="@(recipe.Id == Model.ProductionRun.RecipeId)">@recipe.RecipeName</option>
+            }
+        </select>
+        <button type="submit">Load recipe ingredients</button>
+        <p>This replaces the ingredient list for this untouched draft. Enter actual quantities and optional sources below.</p>
+    </form>
+}
+else
+{
+    <p>@Model.ProductionRun.RecipeName · Recipe snapshot retained because this run already has recorded activity.</p>
+    <a asp-page="ProductionRuns" asp-route-farmId="@Model.FarmId">Start a new run with another recipe</a>
+}
+@if (!Model.RecipeOptions.Any()) { <p>No active recipes saved. <a asp-page="Recipes" asp-route-farmId="@Model.FarmId">Add a recipe</a>.</p> }
 
 <h2>Batch Information</h2>
 
@@ -151,6 +178,70 @@
 
 <hr />
 
+<h2>Ingredient sources <small>(optional)</small></h2>
+<p>Choose a saved receiving lot or scan its receiving QR label. Leave a source unrecorded when it is not needed, such as salt. Source records do not change the amounts used or deduct stock.</p>
+@foreach (var ingredient in Model.Ingredients)
+{
+    var sourceLink = Model.IngredientSources.GetValueOrDefault(ingredient.Id);
+    var receipt = Model.SourceDetails.GetValueOrDefault(ingredient.Id);
+    var mode = sourceLink == null ? "none" : sourceLink.ReceivingLotId.HasValue ? "local" : "qr";
+    <details class="harvest-source-card">
+        <summary>@ingredient.IngredientName — @(receipt == null ? "Source not recorded" : receipt.Lot)</summary>
+        @if (receipt != null)
+        {
+            <h3>Saved receiving source</h3>
+            <p>@receipt.Summary</p>
+            <p>Condition at receiving: @receipt.Condition · @receipt.Address</p>
+            @if (receipt.Harvest is { } harvest)
+            {
+                <p><strong>Harvest:</strong> @harvest.Summary</p>
+            }
+            else { <p>Harvest information not recorded for this receipt.</p> }
+        }
+        @if (Model.ProductionRun.Status != "Complete" && Model.ProductionRun.Status != "Cancelled")
+        {
+            <form method="post" asp-page-handler="SaveSource" class="receipt-source">
+                <input type="hidden" name="runId" value="@Model.ProductionRun.Id" />
+                <input type="hidden" name="farmId" value="@Model.FarmId" />
+                <input type="hidden" name="ingredientId" value="@ingredient.Id" />
+                <label for="source-mode-@ingredient.Id">Source for @ingredient.IngredientName</label>
+                <select name="sourceMode" id="source-mode-@ingredient.Id" data-source-mode>
+                    <option value="none" selected="@(mode == "none")">Not recorded</option>
+                    <option value="local" selected="@(mode == "local")">Saved receiving lot</option>
+                    <option value="qr" selected="@(mode == "qr")">Scan receiving QR</option>
+                </select>
+                <div data-local-panel>
+                    <label for="source-lot-@ingredient.Id">Receiving lot for @ingredient.IngredientName</label>
+                    <select name="receivingLotId" id="source-lot-@ingredient.Id" data-local-lot>
+                        <option value="">Choose receiving lot...</option>
+                        @foreach (var lot in Model.ReceivingOptions.Where(x => Agriloco1.Pages.Farmer.Inventory.ProductionRunDetailsModel.MatchesIngredient(ingredient, x)))
+                        {
+                            <option value="@lot.Id" data-harvest-summary="@(Model.ReceiptHarvests.GetValueOrDefault(lot.Id)?.Summary ?? "Harvest source not recorded.")" selected="@(lot.Id == sourceLink?.ReceivingLotId)">@lot.LotNumber · @lot.SupplierName · @lot.InventoryItemName · @(Model.ReceiptHarvests.GetValueOrDefault(lot.Id)?.Variety) · @lot.ReceivedDate.ToString("yyyy-MM-dd") · @lot.TotalUsableQuantity @lot.UsableUnit</option>
+                        }
+                    </select>
+                    <p data-local-preview></p>
+                    <p>Only this farm's receipts for this ingredient are listed. No saved match? Scan a receipt or leave the source unrecorded.</p>
+                </div>
+                <div data-qr-panel>
+                    <button type="button" data-start-camera>Scan receipt for @ingredient.IngredientName</button>
+                    <button type="button" data-stop-camera hidden>Stop camera</button>
+                    <label for="receipt-image-@ingredient.Id">Upload receipt QR for @ingredient.IngredientName</label>
+                    <input type="file" id="receipt-image-@ingredient.Id" accept="image/*" data-qr-file />
+                    <video data-qr-video playsinline muted hidden></video>
+                    <label for="receipt-text-@ingredient.Id">Receipt transfer text for @ingredient.IngredientName</label>
+                    <textarea name="receiptPayload" id="receipt-text-@ingredient.Id" rows="3" maxlength="2200" data-qr-payload>@(mode == "qr" ? sourceLink?.ReceiptPayload : "")</textarea>
+                    <p data-qr-status role="status" aria-live="polite"></p>
+                    <p data-qr-preview></p>
+                    <label for="confirm-receipt-@ingredient.Id"><input type="checkbox" id="confirm-receipt-@ingredient.Id" name="confirmReceipt" value="true" data-confirm-receipt /> I confirm this receipt is for @ingredient.IngredientName.</label>
+                    <p>Scanned details are supplied by the business, not independently verified. Receipt quantity is not the quantity used in this batch.</p>
+                </div>
+                <button type="submit">Save source for @ingredient.IngredientName</button>
+            </form>
+        }
+        else { <p>Source record locked for this @Model.ProductionRun.Status.ToLowerInvariant() run.</p> }
+    </details>
+}
+
 <h2>Recipe Scaling and Actual Ingredient Use</h2>
 
 <p>
@@ -190,7 +281,8 @@
         <tr>
             <th>Order</th>
             <th>Ingredient</th>
-            <th>Variation</th>
+            <th>Crop variety</th>
+            <th>Recipe package</th>
             <th>Recipe Amount</th>
             <th>Scaled Suggestion</th>
             <th>Actual Used</th>
@@ -219,6 +311,7 @@
                     }
                 </td>
 
+                <td>@(Model.SourceDetails.GetValueOrDefault(ingredient.Id)?.Harvest?.Variety ?? "—")</td>
                 <td>
                     @(string.IsNullOrWhiteSpace(ingredient.VariationName)
                         ? "-"
@@ -877,3 +970,7 @@ else
         </div>
     }
 }
+</div>
+
+<script src="~/lib/jsqr/jsQR.js" asp-append-version="true"></script>
+<script src="~/js/production-receipt-sources.js" asp-append-version="true"></script>

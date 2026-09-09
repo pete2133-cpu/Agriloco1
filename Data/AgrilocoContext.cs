@@ -1,4 +1,4 @@
-﻿using Agriloco.Api.Models;
+using Agriloco.Api.Models;
 using Microsoft.EntityFrameworkCore;
 using Agriloco1.Models.Inventory;
 
@@ -79,6 +79,8 @@ namespace Agriloco.Api.Data
         // ============================================================
         // PRODUCTION
         // ============================================================
+
+        public DbSet<ProductionIngredientSource> ProductionIngredientSources => Set<ProductionIngredientSource>();
 
         public DbSet<ProductionRun> ProductionRuns
             => Set<ProductionRun>();

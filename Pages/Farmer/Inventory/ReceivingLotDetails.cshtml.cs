@@ -3,6 +3,7 @@ using Agriloco1.Models.Inventory;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
+using Agriloco1.Services;
 
 namespace Agriloco1.Pages.Farmer.Inventory
 {
@@ -27,6 +28,7 @@ namespace Agriloco1.Pages.Farmer.Inventory
         [BindProperty]
         public NewCustomFieldInput NewCustomField { get; set; } = new();
 
+        public HarvestTransfer? HarvestSource { get; set; }
         public List<ReceivingLotCustomField> CustomFields { get; set; } = new();
 
         public async Task<IActionResult> OnGetAsync()
@@ -81,7 +83,7 @@ namespace Agriloco1.Pages.Farmer.Inventory
                 return NotFound();
             }
 
-            if (!string.IsNullOrWhiteSpace(NewCustomField.FieldName) &&
+            if (!string.Equals(NewCustomField.FieldName?.Trim(), HarvestTransfer.FieldName, StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(NewCustomField.FieldName) &&
                 !string.IsNullOrWhiteSpace(NewCustomField.FieldValue))
             {
                 var customField = new ReceivingLotCustomField
@@ -110,7 +112,7 @@ namespace Agriloco1.Pages.Farmer.Inventory
                     x.ReceivingLotId == lotId &&
                     x.FarmId == FarmId);
 
-            if (field != null)
+            if (field != null && field.FieldName != HarvestTransfer.FieldName)
             {
                 _db.ReceivingLotCustomFields.Remove(field);
                 await _db.SaveChangesAsync();
@@ -126,6 +128,9 @@ namespace Agriloco1.Pages.Farmer.Inventory
                 .OrderBy(x => x.FieldName)
                 .ThenBy(x => x.Id)
                 .ToListAsync();
+            var sourceField = CustomFields.FirstOrDefault(x => x.FieldName == HarvestTransfer.FieldName);
+            if (HarvestTransfer.TryParse(sourceField?.FieldValue, out var source)) HarvestSource = source;
+            CustomFields.RemoveAll(x => x.FieldName == HarvestTransfer.FieldName);
         }
 
         public class NewCustomFieldInput

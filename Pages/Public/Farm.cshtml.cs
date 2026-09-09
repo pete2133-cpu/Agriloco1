@@ -1,4 +1,5 @@
-﻿using System;
+using Agriloco.Api.Services;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
@@ -25,6 +26,8 @@ namespace agriloco.api.Pages.Public
 
         public PublicFarmOut? Farm { get; set; }
         public List<CropSearchOut> Crops { get; set; } = new();
+
+        public List<PublicFoodListing> FoodListings { get; set; } = new();
 
         public string LayoutJson { get; set; } = "{}";
 
@@ -69,6 +72,8 @@ namespace agriloco.api.Pages.Public
                     InventoryLastSyncAt = c.InventoryLastSyncAt
                 })
                 .ToListAsync();
+
+            FoodListings = await PublicFoodCatalog.LoadAsync(_db, id);
 
             var layout = await _db.FarmMapLayouts
                 .AsNoTracking()

@@ -1,0 +1,11 @@
+@{ var modelFarm = ViewData.Model?.GetType().GetProperty("FarmId")?.GetValue(ViewData.Model) as int?; var selected = modelFarm is > 0 ? modelFarm.Value : int.TryParse(Context.Request.Query["farmId"], out var f) && f > 0 ? f : 1; }
+<details class="inventory-menu" open><summary>Inventory &amp; production sections</summary><nav class="inventory-nav" aria-label="Inventory navigation">
+<a asp-page="/Farmer/Inventory/Index" asp-route-farmId="@selected">Overview</a>
+<a asp-page="/Farmer/Inventory/InventoryItems" asp-route-farmId="@selected">Stock items</a>
+<a asp-page="/Farmer/Inventory/ReceivingLots" asp-route-farmId="@selected">Receiving</a>
+<a asp-page="/Farmer/Inventory/HarvestLots" asp-route-farmId="@selected">Harvests</a>
+<a asp-page="/Farmer/Inventory/ProductionRuns" asp-route-farmId="@selected">Production</a>
+<a asp-page="/Farmer/Inventory/Recipes" asp-route-farmId="@selected">Recipes</a>
+<a asp-page="/Farmer/Inventory/FinishedProducts" asp-route-farmId="@selected">Finished products</a>
+<a asp-page="/Farmer/Inventory/Suppliers" asp-route-farmId="@selected">Suppliers</a>
+<a asp-page="/Farmer/Inventory/ProcessRecords" asp-route-farmId="@selected">Records</a></nav></details>

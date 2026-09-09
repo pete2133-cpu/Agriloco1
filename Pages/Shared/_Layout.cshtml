@@ -1,44 +1,54 @@
-﻿@{
+@{
     var title = ViewData["Title"] as string ?? "Agriloco";
+    var member = Context.Request.Path.StartsWithSegments("/Farmer");
+    var modelFarm = ViewData.Model?.GetType().GetProperty("FarmId")?.GetValue(ViewData.Model) as int?;
+    var farmId = modelFarm is > 0 ? modelFarm.Value : int.TryParse(Context.Request.Query["farmId"], out var selectedFarm) && selectedFarm > 0 ? selectedFarm : 1;
 }
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@title</title>
-
-    <!-- Agriloco brand CSS -->
-    <link rel="stylesheet" href="~/css/agriloco.css" />
+    <title>@title · Agriloco</title>
+    <link rel="stylesheet" href="~/css/agriloco.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/v1.css" asp-append-version="true" />
 </head>
-<body>
-    <div class="container-xl">
-        <div class="brandbar">
-            <div class="title">
-                <!-- If you add a logo later, put it in wwwroot/img/agriloco-flat.png -->
-                <!-- <img src="~/img/agriloco-flat.png" alt="Agriloco" /> -->
-                <div>
-                    <div style="font-size:18px;">Agriloco</div>
-                    <div style="font-size:12px;opacity:.9;">Find farms. Find fruit.</div>
-                </div>
-            </div>
-
-            <div style="display:flex;gap:10px;flex-wrap:wrap;">
-                <a class="btn btn-secondary" href="/Search/Crops">Search</a>
-                <a class="btn btn-soil" href="/Farmer/Register">Farmer</a>
-                <a class="btn btn-secondary" href="/Farmer/Crops">Add Crop</a>
-                <a class="btn btn-secondary" href="/Farmer/ManageCropAssets">Manage Crop</a>
-                
-                <a class="btn btn-sm btn-success" href="/Farmer/Dashboard">Portal</a>
-            </div>
+<body class="@(member ? "member-site" : "public-site")">
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <header class="site-header">
+        <div class="site-header-inner">
+            <a class="brand" asp-page="/Search/Crops"><strong>Agriloco<span>.</span></strong><small>Find local food.</small></a>
+            <nav class="primary-nav" aria-label="Main navigation">
+                <a asp-page="/Search/Crops">Find food</a>
+                <a asp-page="/Farmer/Dashboard" asp-route-farmId="@farmId">Farmer dashboard</a>
+                <a asp-page="/Farmer/Register">List your farm</a>
+            </nav>
         </div>
-    </div>
-
-    <main class="container-xl">
+        @if (member)
+        {
+            <nav class="member-nav" aria-label="Farmer navigation">
+                <a asp-page="/Farmer/Dashboard" asp-route-farmId="@farmId">Availability</a>
+                <a asp-page="/Farmer/Add" asp-route-farmId="@farmId">Crops &amp; products</a>
+                <a asp-page="/Farmer/Inventory/Index" asp-route-farmId="@farmId">Inventory &amp; production</a>
+                <a asp-page="/Public/Farm" asp-route-id="@farmId">Public farm page</a>
+                <details class="nav-more">
+                    <summary>More tools</summary>
+                    <div>
+                        <a asp-page="/Farmer/Crops" asp-route-farmId="@farmId">Search listings</a>
+                        <a asp-page="/Farmer/ManageCropAssets" asp-route-farmId="@farmId">Crop assets</a>
+                        <a asp-page="/Farmer/MapImage" asp-route-farmId="@farmId">Map image</a>
+                        <a asp-page="/Farmer/Inventory/Suppliers" asp-route-farmId="@farmId">Suppliers</a>
+                        <a asp-page="/Farmer/Inventory/InventoryItems" asp-route-farmId="@farmId">Stock units &amp; packaging</a>
+                    </div>
+                </details>
+            </nav>
+        }
+    </header>
+    <main id="main-content" class="site-main" tabindex="-1">
         @RenderBody()
     </main>
-
+    <footer class="site-footer">Agriloco · Local food, closer to home.</footer>
+    <script src="~/js/v1.js" asp-append-version="true" defer></script>
     @RenderSection("Scripts", required: false)
 </body>
 </html>

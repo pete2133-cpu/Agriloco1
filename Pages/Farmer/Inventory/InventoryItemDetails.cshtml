@@ -1,6 +1,8 @@
-﻿@page
+@page
 @model Agriloco1.Pages.Farmer.Inventory.InventoryItemDetailsModel
 
+<partial name="_InventoryNav" />
+<div class="inventory-page">
 <h1>Inventory Item Details</h1>
 
 <p>
@@ -35,7 +37,7 @@
     <br />
 
     <div>
-        <label>Default End Measure Unit</label><br />
+        <label>Stock unit</label><br />
         <select asp-for="InventoryItem.BaseUnit" style="width:350px;">
             <option value="units">units</option>
             <option value="kg">kg</option>
@@ -207,3 +209,4 @@
         }
     </tbody>
 </table>
+</div>

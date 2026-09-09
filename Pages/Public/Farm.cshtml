@@ -1,10 +1,10 @@
-﻿@page
+@page
 @model agriloco.api.Pages.Public.FarmModel
 @{
     ViewData["Title"] = Model.Farm?.Name ?? "Farm";
 }
 
-<h2>@(Model.Farm?.Name ?? "Farm")</h2>
+<p><a asp-page="/Search/Crops">← Find local food</a></p><h1>@(Model.Farm?.Name ?? "Farm")</h1>
 
 @if (Model.Farm == null)
 {
@@ -12,7 +12,7 @@
     return;
 }
 
-<div class="mb-2">
+<div class="farm-facts">
     <div><strong>Region:</strong> @Model.Farm.RegionCode</div>
     <div><strong>Address:</strong> @Model.Farm.Address</div>
     <div><strong>Contact:</strong> @Model.Farm.ContactMethod1</div>
@@ -20,19 +20,19 @@
 
 <hr />
 
-<h4>Crop List</h4>
+<h2>Food from this farm</h2>
 
 <!-- ✅ Notify status message -->
 <div id="agrilocoNotifyMsg" class="alert d-none" role="alert"></div>
 
-@if (Model.Crops == null || Model.Crops.Count == 0)
+@if (Model.FoodListings.Count == 0)
 {
     <div class="text-muted">No crops listed for this farm yet.</div>
 }
 else
 {
-    <ul>
-        @foreach (var c in Model.Crops)
+    <ul class="farm-products">
+        @foreach (var c in Model.FoodListings)
         {
             <li style="margin-bottom:8px;">
                 <strong>@c.Category</strong>
@@ -40,17 +40,21 @@ else
                 {
                     <span> - @c.Variety</span>
                 }
-                <span> | </span>
-                <span>@(string.IsNullOrWhiteSpace(c.Availability) ? "Unknown" : c.Availability)</span>
 
-                <!-- ✅ Email subscribe button -->
+                <span class="badge" data-status="@c.Availability">@(string.IsNullOrWhiteSpace(c.Availability) ? "Check with farm" : c.Availability == "NotAvailable" ? "Unavailable" : c.Availability)</span>
+<span class="text-muted">@c.SalesMethods</span>
+
+                <!-- Keep definition subscriptions separate from legacy crop IDs. -->
+                @if (c.FarmDefinitionId.HasValue || c.Id > 0) {
                 <button type="button"
                         class="btn btn-sm btn-outline-primary agriloco-notify-btn"
                         style="margin-left:10px;"
                         data-farmid="@Model.Farm.Id"
-                        data-cropid="@c.Id">
+                        data-cropid="@c.Id"
+                        data-definitionid="@c.FarmDefinitionId">
                     Email me when available
                 </button>
+                }
             </li>
         }
     </ul>
@@ -58,12 +62,12 @@ else
 
 <hr />
 
-<h4>Farm Map</h4>
+<h2>Explore the farm</h2>
 
 @if (string.IsNullOrWhiteSpace(Model.Farm.MapImageUrl))
 {
     <div class="alert alert-warning">
-        No basemap uploaded yet for this farm.
+        This farm has not shared a map yet. Browse its food listings above or use the contact details to plan your visit.
     </div>
 }
 else
@@ -245,7 +249,7 @@ else
 
 
         // ============================================================
-        // ✅ (B) EMAIL SUBSCRIBE BUTTONS (unchanged)
+        // Subscribe using the correct identifier for this food listing.
         // ============================================================
         (function () {
             function showMsg(text, kind) {
@@ -260,13 +264,13 @@ else
                 el.textContent = text;
             }
 
-            async function subscribeCrop(farmId, cropId, email) {
-                const resp = await fetch("/api/Alerts/subscribe-crop", {
+            async function subscribeCrop(farmId, cropId, definitionId, email) {
+                const resp = await fetch(definitionId ? "/api/AvailabilitySubscriptions" : "/api/Alerts/subscribe-crop", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         farmId: Number(farmId),
-                        cropId: Number(cropId),
+                        ...(definitionId ? { farmDefinitionId: Number(definitionId) } : { cropId: Number(cropId) }),
                         email: email
                     })
                 });
@@ -286,19 +290,22 @@ else
                 const farmId = btn.getAttribute("data-farmid");
                 const cropId = btn.getAttribute("data-cropid");
 
-                if (!farmId || !cropId) {
+                const definitionId = btn.getAttribute("data-definitionid");
+                if (!farmId || (!definitionId && !cropId)) {
                     showMsg("Missing farmId or cropId on button.", "danger");
                     return;
                 }
 
-                const email = prompt("Enter your email to get a ONE-TIME alert when this crop becomes Available:");
+                const email = prompt(definitionId ? "Enter your email for availability updates when this crop or variety becomes available:" : "Enter your email for a one-time alert when this crop becomes available:");
                 if (!email) return;
 
                 try {
                     showMsg("Subscribing…", "info");
-                    const result = await subscribeCrop(farmId, cropId, email.trim());
+                    const result = await subscribeCrop(farmId, cropId, definitionId, email.trim());
 
-                    if (result && result.status === "already_subscribed") {
+                    if (definitionId) {
+                        showMsg(result.message || "Subscribed for availability updates.", "success");
+                    } else if (result && result.status === "already_subscribed") {
                         showMsg("You’re already subscribed for this crop. You'll get one email when it becomes Available.", "info");
                     } else {
                         showMsg("Subscribed! You’ll receive one email when the crop becomes Available.", "success");
