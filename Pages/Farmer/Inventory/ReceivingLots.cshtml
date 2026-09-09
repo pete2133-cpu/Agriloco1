@@ -47,6 +47,13 @@
             </select>
             @if (!Model.HarvestOptions.Any()) { <p>No harvests saved for this farm yet. Record a harvest first, or use a supplier delivery.</p> }
         </div>
+        <div id="ownHarvestDetails" hidden>
+            <label for="ownHarvestVariety">Harvest variety</label>
+            <input id="ownHarvestVariety" readonly />
+            <label for="ownHarvestRow">Harvest row / location</label>
+            <input id="ownHarvestRow" readonly />
+            <p id="ownHarvestMessage" role="status"></p>
+        </div>
         <div id="qrHarvestPanel">
             <p>Scan an Agriloco harvest label from a screen or paper, or upload its QR image. Details stay on this device until you record the delivery.</p>
             <button type="button" id="startHarvestCamera">Scan with camera</button>
@@ -204,6 +211,8 @@
 </table>
 
 <script>
+    const ownHarvestDefaults = @Html.Raw(JsonSerializer.Serialize(Model.HarvestDefaults));
+    const fillOwnHarvestOnLoad = @(Request.Method == "GET" ? "true" : "false");
     const allVariations = @Html.Raw(JsonSerializer.Serialize(
                 Model.ItemVariationOptions.Select(v => new
                 {
@@ -219,14 +228,14 @@
         return Number.isNaN(parsed) ? null : parsed;
     }
 
-    function refreshVariationList() {
+    function refreshVariationList(clearSelection = true) {
         const itemBox = document.getElementById("itemSearchBox");
         const variationBox = document.getElementById("variationSearchBox");
         const variationList = document.getElementById("itemVariationList");
 
         const itemId = getLeadingId(itemBox.value);
 
-        variationBox.value = "";
+        if (clearSelection) variationBox.value = "";
         variationList.innerHTML = "";
 
         if (!itemId) return;
@@ -240,8 +249,9 @@
         });
     }
 
-    document.getElementById("itemSearchBox").addEventListener("change", refreshVariationList);
-    document.getElementById("itemSearchBox").addEventListener("input", refreshVariationList);
+    document.getElementById("itemSearchBox").addEventListener("change", () => refreshVariationList());
+    document.getElementById("itemSearchBox").addEventListener("input", () => refreshVariationList());
+    refreshVariationList(false);
 </script>
 </div>
 

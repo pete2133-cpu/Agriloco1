@@ -26,6 +26,7 @@ namespace Agriloco1.Pages.Farmer.Inventory
         [BindProperty]
         public NewReceivingInput NewReceiving { get; set; } = new();
 
+        public Dictionary<int, HarvestReceivingDefaults> HarvestDefaults { get; set; } = new();
         public List<HarvestLot> HarvestOptions { get; set; } = new();
         public List<ReceivingLot> ReceivingLots { get; set; } = new();
 
@@ -92,6 +93,10 @@ namespace Agriloco1.Pages.Farmer.Inventory
             var itemId = ExtractLeadingId(NewReceiving.ItemSearch);
             var packageId = ExtractLeadingId(NewReceiving.ItemVariationSearch);
 
+            var ownFarmName = NewReceiving.SourceMode == "own" && source != null
+                && string.Equals(NewReceiving.SupplierSearch?.Trim(), source.Farm.Trim(), StringComparison.OrdinalIgnoreCase);
+            if (ownFarmName) supplierId = null;
+
             if ((supplierId == null && source == null) ||
                 itemId == null ||
                 NewReceiving.UnitsReceived <= 0)
@@ -107,7 +112,7 @@ namespace Agriloco1.Pages.Farmer.Inventory
             var item = await _db.InventoryItems
                 .FirstOrDefaultAsync(x => x.Id == itemId && x.FarmId == FarmId);
 
-            if ((supplier == null && (source == null || !string.IsNullOrWhiteSpace(NewReceiving.SupplierSearch))) || item == null)
+            if ((supplier == null && (source == null || (!string.IsNullOrWhiteSpace(NewReceiving.SupplierSearch) && !ownFarmName))) || item == null)
             {
                 ErrorMessage = "The selected supplier or item could not be found.";
                 await OnGetAsync();
@@ -271,6 +276,11 @@ namespace Agriloco1.Pages.Farmer.Inventory
                 .Where(x => x.FarmId == FarmId && x.IsActive)
                 .OrderBy(x => x.PackageName)
                 .ToListAsync();
+
+            var farmName = await _db.Farms.Where(x => x.Id == FarmId).Select(x => x.Name).FirstOrDefaultAsync() ?? "";
+            var suppliers = await _db.Suppliers.AsNoTracking().Where(x => x.FarmId == FarmId && x.IsActive).ToListAsync();
+            HarvestDefaults = HarvestOptions.ToDictionary(x => x.Id,
+                x => HarvestReceivingDefaults.For(x, farmName, suppliers, items, packages));
 
             ItemVariationOptions = packages
                 .Join(

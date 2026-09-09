@@ -46,3 +46,10 @@ Camera scanning needs permission on HTTPS or localhost. On a phone, localhost re
 - wwwroot/lib/jsqr/jsQR.js and LICENSE — local decoder.
 - wwwroot/css/v1.css — source card and print label styling.
 - HARVEST-RECEIVING.md — workflow, format and test notes.
+
+## Own-harvest form defaults
+Selecting a saved own harvest (including the Harvests page Receive link) now fills the farm supplier, matching inventory item and matching package. Harvest variety and row/location are shown separately because inventory package variations describe packaging.
+Matching uses active records from the receiving farm only. Whole crop names allow simple singular/plural differences (Apple/Apples); matching does not use substrings. A unique package matching the harvest unit (bushels/Bushel) is selected. Missing or ambiguous matches prompt a manual choice rather than creating inventory or choosing an arbitrary package.
+The supplied own-farm name can save without creating a duplicate supplier. Fields remain editable; quantity is still entered by the receiver. Changing harvest/source clears stale automatic selections, and validation redisplays preserve edits.
+Verified: zero build errors (two existing nullable warnings); 28 service/handler checks; browser selecting Golden Delicious Row 39 filled Wheelbarrow Orchards, Apples, Bushel and saved two bushels as the existing 40 kg package calculation. Switching to Garlic Scapes cleared the unmatched inventory/package fields. Tests used only a copied database.
+Additional file: Services/HarvestReceivingDefaults.cs. Also updated ReceivingLots.cshtml/.cshtml.cs and wwwroot/js/receiving-harvest.js.

@@ -70,6 +70,29 @@
         } catch { status.textContent = 'Unable to read this image. Try a PNG or JPEG of the QR label.'; }
         finally { URL.revokeObjectURL(url); }
     });
+    const harvestSelect = document.getElementById('NewReceiving_HarvestId');
+    const supplierInput = document.getElementById('NewReceiving_SupplierSearch');
+    const itemInput = document.getElementById('itemSearchBox');
+    const packageInput = document.getElementById('variationSearchBox');
+    let ownFieldsApplied = mode.value === 'own';
+    function fillOwnHarvest(fillFields = true) {
+        const defaults = mode.value === 'own' ? ownHarvestDefaults[harvestSelect.value] : null;
+        document.getElementById('ownHarvestDetails').hidden = !defaults;
+        if (defaults) {
+            document.getElementById('ownHarvestVariety').value = defaults.Variety || 'Not recorded';
+            document.getElementById('ownHarvestRow').value = defaults.Row || 'Not recorded';
+            document.getElementById('ownHarvestMessage').textContent = defaults.Message;
+        }
+        if (!fillFields) return;
+        if (mode.value === 'own' || ownFieldsApplied) {
+            supplierInput.value = defaults?.Supplier || '';
+            itemInput.value = defaults?.Item || '';
+            refreshVariationList();
+            packageInput.value = defaults?.Package || '';
+        }
+        ownFieldsApplied = mode.value === 'own';
+    }
+    harvestSelect.addEventListener('change', () => fillOwnHarvest());
     function updateMode() {
         stop();
         document.getElementById('ownHarvestPanel').hidden = mode.value !== 'own';
@@ -78,9 +101,9 @@
         payload.required = mode.value === 'qr';
         document.getElementById('NewReceiving_SupplierSearch').required = mode.value === 'manual';
     }
-    mode.addEventListener('change', updateMode);
+    mode.addEventListener('change', () => { updateMode(); fillOwnHarvest(); });
     payload.addEventListener('input', showSource);
     window.addEventListener('pagehide', stop);
     document.addEventListener('visibilitychange', () => { if (document.hidden) stop(); });
-    updateMode(); showSource();
+    updateMode(); showSource(); fillOwnHarvest(fillOwnHarvestOnLoad);
 })();
