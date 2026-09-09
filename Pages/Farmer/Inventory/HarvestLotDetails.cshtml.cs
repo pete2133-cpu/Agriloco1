@@ -17,6 +17,9 @@ namespace Agriloco1.Pages.Farmer.Inventory
         [BindProperty(SupportsGet = true)]
         public int Id { get; set; }
 
+        [BindProperty(SupportsGet = true)]
+        public int FarmId { get; set; } = 1;
+
         [BindProperty]
         public HarvestLot HarvestLot { get; set; } = new();
 
@@ -30,6 +33,7 @@ namespace Agriloco1.Pages.Farmer.Inventory
             }
 
             HarvestLot = lot;
+            FarmId = lot.FarmId ?? 1;
             return Page();
         }
 
@@ -55,7 +59,7 @@ namespace Agriloco1.Pages.Farmer.Inventory
 
             await _db.SaveChangesAsync();
 
-            return RedirectToPage("/Farmer/Inventory/HarvestLots");
+            return RedirectToPage("/Farmer/Inventory/HarvestLots", new { farmId = existing.FarmId ?? 1 });
         }
     }
 }

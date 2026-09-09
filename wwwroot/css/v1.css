@@ -110,3 +110,7 @@ body .inventory-page > form[method=post] > h2,body .inventory-page > form[method
 @media(max-width:600px) { .inventory-menu > summary { display:list-item; cursor:pointer; font-weight:650; padding:10px 0; } .inventory-menu { margin-bottom:20px; border-bottom:1px solid var(--line); } .inventory-menu .inventory-nav { margin-bottom:12px; border:0; } }
 body button.delete-button,body form[action*="handler=Delete"] button[type=submit] { background:#fff3f0; border-color:#e0bbb3; color:#973d32; }
 @media(max-width:900px) { body .layout .product-form { order:-1; } }
+body .inventory-page > form[method=post] > .harvest-validation,
+body .inventory-page > form[method=post] > .harvest-source-help { flex-basis:100%; }
+body .inventory-page > form[method=post] > .validation-summary-valid { display:none; }
+.harvest-source-help { font-size:13px; color:var(--muted); margin:0; }

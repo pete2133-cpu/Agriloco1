@@ -1,34 +1,58 @@
 @page
 @model Agriloco1.Pages.Farmer.Inventory.HarvestLotsModel
+@{ ViewData["Title"] = "Harvests"; }
 
 <partial name="_InventoryNav" />
 <div class="inventory-page">
 <h1>Harvest Lots</h1>
 
-<p>Create a simple harvest lot, then add details later.</p>
+<p>Record what you harvested and exactly where it came from. Choose one saved row or location per harvest lot.</p>
 
 <form method="get" style="margin-bottom:20px;">
-    <input type="text" name="SearchTerm" value="@Model.SearchTerm" placeholder="Search crop, variety, lot, status..." />
+    <input type="hidden" asp-for="FarmId" />
+    <input type="text" name="SearchTerm" value="@Model.SearchTerm" placeholder="Search crop, variety, row, lot, status..." />
     <button type="submit">Search</button>
-    <a href="/Farmer/Inventory/HarvestLots">Clear</a>
+    <a href="/Farmer/Inventory/HarvestLots?farmId=@Model.FarmId">Clear</a>
 </form>
 
 <h2>New Harvest Lot</h2>
 
 <form method="post" asp-page-handler="Create" style="margin-bottom:30px;">
+    <input type="hidden" asp-for="FarmId" />
+    <div asp-validation-summary="All" class="alert alert-danger harvest-validation" role="alert"></div>
+    @if (Model.Sources.Crops.Count == 0)
+    {
+        <div class="empty-state"><p>No saved crops are available for this farm yet.</p><a asp-page="/Farmer/Add" asp-route-farmId="@Model.FarmId">Add a crop to the dashboard</a></div>
+    }
     <div>
-        <label>Crop</label><br />
-        <input asp-for="NewHarvest.CropName" placeholder="Corn, Apples, Strawberries..." required />
+        <label asp-for="NewHarvest.CropDefinitionId" for="harvest-crop">Crop *</label>
+        <select asp-for="NewHarvest.CropDefinitionId" id="harvest-crop" required>
+            <option value="">Choose a saved crop</option>
+            @foreach (var crop in Model.Sources.Crops) { <option value="@crop.Id">@crop.Name</option> }
+        </select>
+        <span asp-validation-for="NewHarvest.CropDefinitionId"></span>
     </div>
-
     <div>
-        <label>Variety</label><br />
-        <input asp-for="NewHarvest.VarietyName" placeholder="Honeycrisp, Albion, Music..." />
+        <label asp-for="NewHarvest.VarietyDefinitionId" for="harvest-variety">Variety</label>
+        <select asp-for="NewHarvest.VarietyDefinitionId" id="harvest-variety" aria-describedby="harvest-source-help">
+            <option value="">Choose a variety, if saved</option>
+            @foreach (var variety in Model.Sources.Varieties) { <option value="@variety.Id">@variety.Name</option> }
+        </select>
+        <span asp-validation-for="NewHarvest.VarietyDefinitionId"></span>
     </div>
-
+    <div>
+        <label asp-for="NewHarvest.LocationDefinitionId" for="harvest-location">Row / location</label>
+        <select asp-for="NewHarvest.LocationDefinitionId" id="harvest-location" aria-describedby="harvest-source-help">
+            <option value="">Choose a saved row or location</option>
+            @foreach (var location in Model.Sources.Locations) { <option value="@location.Id">@location.Name</option> }
+        </select>
+        <span asp-validation-for="NewHarvest.LocationDefinitionId"></span>
+    </div>
+    <p id="harvest-source-help" class="harvest-source-help" aria-live="polite">Variety and row are required when saved for the selected crop. Private and unavailable crops can still be harvested.</p>
+    <noscript><p>Choose matching crop, variety and row entries. The saved hierarchy will be checked when you submit.</p></noscript>
     <div>
         <label>Quantity</label><br />
-        <input asp-for="NewHarvest.Quantity" type="number" step="0.01" required />
+        <input asp-for="NewHarvest.Quantity" type="number" step="0.01" min="0.01" required />
     </div>
 
     <div>
@@ -50,7 +74,7 @@
     </div>
 
     <br />
-    <button type="submit">Create Harvest Lot</button>
+    <button type="submit" disabled="@(Model.Sources.Crops.Count == 0)">Save harvest</button>
 </form>
 
 <h2>Harvest Lot List</h2>
@@ -92,14 +116,16 @@
                     <td>
                         <form method="post" asp-page-handler="ToggleStatus" style="display:inline;">
                             <input type="hidden" name="id" value="@lot.Id" />
+                            <input type="hidden" asp-for="FarmId" />
                             <button type="submit">Toggle Status</button>
                         </form>
 
-                        <a href="/Farmer/Inventory/HarvestLotDetails?id=@lot.Id" style="margin-left:8px;">Add +</a>
+                        <a href="/Farmer/Inventory/HarvestLotDetails?id=@lot.Id&farmId=@Model.FarmId" style="margin-left:8px;">Add +</a>
 
                         <form method="post" asp-page-handler="Delete" style="display:inline; margin-left:8px;"
                               onsubmit="return confirm('Delete this harvest lot? This cannot be undone.');">
                             <input type="hidden" name="id" value="@lot.Id" />
+                            <input type="hidden" asp-for="FarmId" />
                             <button type="submit">Delete</button>
                         </form>
                     </td>
@@ -109,3 +135,8 @@
     </tbody>
 </table>
 </div>
+
+@section Scripts {
+    <script type="application/json" id="harvest-sources">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Sources, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)))</script>
+    <script src="~/js/harvest-sources.js" asp-append-version="true" defer></script>
+}

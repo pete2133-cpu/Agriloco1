@@ -6,11 +6,12 @@
 <h1>Harvest Lot Details</h1>
 
 <p>
-    <a href="/Farmer/Inventory/HarvestLots">← Back to Harvest Lots</a>
+    <a href="/Farmer/Inventory/HarvestLots?farmId=@Model.FarmId">← Back to Harvest Lots</a>
 </p>
 
 <form method="post">
     <input type="hidden" asp-for="HarvestLot.Id" />
+    <input type="hidden" asp-for="FarmId" />
 
     <div>
         <label><strong>Lot Number</strong></label><br />
