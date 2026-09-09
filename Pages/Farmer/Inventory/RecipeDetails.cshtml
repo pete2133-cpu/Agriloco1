@@ -1,7 +1,9 @@
-﻿@page
+@page
 @model Agriloco1.Pages.Farmer.Inventory.RecipeDetailsModel
 @using System.Text.Json
 
+<partial name="_InventoryNav" />
+<div class="inventory-page">
 <h1>Recipe Details</h1>
 
 <p>
@@ -505,3 +507,4 @@
         .getElementById("variationSearchBox")
         .addEventListener("change", applyVariationSelection);
 </script>
+</div>

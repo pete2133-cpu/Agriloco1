@@ -1,10 +1,10 @@
-﻿@page
+@page
 @model agriloco.api.Pages.Public.FarmModel
 @{
     ViewData["Title"] = Model.Farm?.Name ?? "Farm";
 }
 
-<h2>@(Model.Farm?.Name ?? "Farm")</h2>
+<p><a asp-page="/Search/Crops">← Find local food</a></p><h1>@(Model.Farm?.Name ?? "Farm")</h1>
 
 @if (Model.Farm == null)
 {
@@ -12,7 +12,7 @@
     return;
 }
 
-<div class="mb-2">
+<div class="farm-facts">
     <div><strong>Region:</strong> @Model.Farm.RegionCode</div>
     <div><strong>Address:</strong> @Model.Farm.Address</div>
     <div><strong>Contact:</strong> @Model.Farm.ContactMethod1</div>
@@ -20,7 +20,7 @@
 
 <hr />
 
-<h4>Crop List</h4>
+<h2>Food from this farm</h2>
 
 <!-- ✅ Notify status message -->
 <div id="agrilocoNotifyMsg" class="alert d-none" role="alert"></div>
@@ -31,7 +31,7 @@
 }
 else
 {
-    <ul>
+    <ul class="farm-products">
         @foreach (var c in Model.Crops)
         {
             <li style="margin-bottom:8px;">
@@ -40,8 +40,9 @@ else
                 {
                     <span> - @c.Variety</span>
                 }
-                <span> | </span>
-                <span>@(string.IsNullOrWhiteSpace(c.Availability) ? "Unknown" : c.Availability)</span>
+
+                <span class="badge" data-status="@c.Availability">@(string.IsNullOrWhiteSpace(c.Availability) ? "Check with farm" : c.Availability == "NotAvailable" ? "Unavailable" : c.Availability)</span>
+<span class="text-muted">@(c.OfferingType == "PickYourOwn" ? "Pick your own" : c.OfferingType == "ReadyPicked" ? "Ready picked" : c.OfferingType)</span>
 
                 <!-- ✅ Email subscribe button -->
                 <button type="button"
@@ -58,12 +59,12 @@ else
 
 <hr />
 
-<h4>Farm Map</h4>
+<h2>Explore the farm</h2>
 
 @if (string.IsNullOrWhiteSpace(Model.Farm.MapImageUrl))
 {
     <div class="alert alert-warning">
-        No basemap uploaded yet for this farm.
+        This farm has not shared a map yet. Browse its food listings above or use the contact details to plan your visit.
     </div>
 }
 else

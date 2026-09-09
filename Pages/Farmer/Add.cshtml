@@ -1,7 +1,7 @@
-﻿@page
+@page
 @model Agriloco1.Pages.Farmer.AddModel
 @{
-    ViewData["Title"] = "Add Items";
+    ViewData["Title"] = "Crops & products";
 }
 
 <style>
@@ -224,7 +224,7 @@
 
         <div>
             <h1 class="page-title">
-                Farm Structure
+                Crops & products
             </h1>
 
             <div class="subtitle">
@@ -247,7 +247,7 @@
         <div class="panel">
 
             <div class="panel-header">
-                <h2>Current Structure</h2>
+                <h2>Your crops & products</h2>
             </div>
 
             <div class="top-add">
@@ -255,7 +255,7 @@
                 <a class="button button-dark"
                    asp-page="/Farmer/Add"
                    asp-route-farmId="@Model.FarmId">
-                    + New Top-Level Item
+                    Add crop or product
                 </a>
 
             </div>
@@ -263,7 +263,7 @@
             @if (Model.ExistingDefinitions.Count == 0)
             {
                 <div class="panel-body">
-                    No items have been created yet.
+                    No crops or products yet. Add your first one to get started.
                 </div>
             }
             else
@@ -341,9 +341,9 @@
 
         </div>
 
-        <!-- RIGHT: ADD OR EDIT -->
+        <!-- ADD OR EDIT -->
 
-        <div class="panel">
+        <div class="panel product-form" id="product-form">
 
             @if (Model.EditId.HasValue &&
                         Model.ItemBeingEdited != null)
@@ -351,7 +351,7 @@
                 <!-- EDIT MODE -->
 
                 <div class="panel-header">
-                    <h2>Edit / Move Item</h2>
+                    <h2>Edit crop or product</h2>
                 </div>
 
                 <div class="panel-body">
@@ -383,7 +383,7 @@
 
                         <label class="main-label"
                                asp-for="EditItem.DisplayName">
-                            Item Name
+                            Name
                         </label>
 
                         <input class="form-control"
@@ -406,7 +406,7 @@
                                 asp-for="EditItem.ParentFarmDefinitionId">
 
                             <option value="">
-                                Top Level
+                                Main crop or product
                             </option>
 
                             @foreach (var possibleParent
@@ -506,11 +506,11 @@
 
                     @if (Model.SelectedParent != null)
                     {
-                        <h2>Add Child Item</h2>
+                        <h2>Add a variety or location</h2>
                     }
                     else
                     {
-                        <h2>Add Top-Level Item</h2>
+                        <h2>Add crop or product</h2>
                     }
 
                 </div>
@@ -539,7 +539,7 @@
                                                 }
                             else
                             {
-                                <span>Top Level</span>
+                                <span>Main crop or product</span>
                             }
 
                         </div>
@@ -564,7 +564,7 @@
 
                             <label class="main-label"
                                    asp-for="NewItem.DisplayName">
-                                Item Name
+                                Name
                             </label>
 
                             <input class="form-control"
@@ -627,7 +627,7 @@
 
                         <button type="submit"
                                 class="button button-dark">
-                            Add Item
+                            Save
                         </button>
 
                     </form>

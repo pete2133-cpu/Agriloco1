@@ -1,4 +1,7 @@
-﻿@page
+@page
 @model Agriloco1.Pages.Farmer.Inventory.IndexModel
-@{
-}
+@{ ViewData["Title"] = "Inventory & production"; var farmId = int.TryParse(Request.Query["farmId"], out var f) && f > 0 ? f : 1; }
+<partial name="_InventoryNav" />
+<div class="inventory-page">
+<h1>Inventory & production</h1><p class="section-intro">Follow food from arrival and harvest through preparation. Choose an everyday task to get started.</p><div class="tool-grid"><a class="tool-card" asp-page="InventoryItems" asp-route-farmId="@farmId"><h2>Stock items</h2><p>Manage ingredients, produce and packaging.</p></a><a class="tool-card" asp-page="ReceivingLots" asp-route-farmId="@farmId"><h2>Receiving</h2><p>Record incoming quantities and supplier details.</p></a><a class="tool-card" asp-page="HarvestLots" asp-route-farmId="@farmId"><h2>Harvests</h2><p>Keep harvest quantities and lot details together.</p></a><a class="tool-card" asp-page="ProductionRuns" asp-route-farmId="@farmId"><h2>Production</h2><p>Start a batch and review production progress.</p></a><a class="tool-card" asp-page="Recipes" asp-route-farmId="@farmId"><h2>Recipes</h2><p>View ingredients and preparation instructions.</p></a><a class="tool-card" asp-page="Suppliers" asp-route-farmId="@farmId"><h2>Suppliers</h2><p>Keep supplier and contact information handy.</p></a></div>
+</div>

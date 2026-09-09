@@ -1,11 +1,13 @@
-﻿@page
+@page
 @model Agriloco1.Pages.Farmer.Inventory.SuppliersModel
 
+<partial name="_InventoryNav" />
+<div class="inventory-page">
 <h1>Suppliers</h1>
 
 <p>These are private supplier names for this farm/business. You can optionally link a supplier to a real Agriloco Farm ID later.</p>
 
-<p><strong>Current Farm ID:</strong> @Model.FarmId</p>
+<details class="context-note"><summary>Farm reference</summary><p>@Model.FarmId</p></details>
 
 <form method="get" style="margin-bottom:20px;">
     <input type="hidden" name="FarmId" value="@Model.FarmId" />
@@ -95,3 +97,4 @@
         }
     </tbody>
 </table>
+</div>

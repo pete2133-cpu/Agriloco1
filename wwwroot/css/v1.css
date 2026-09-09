@@ -1,0 +1,112 @@
+/* Shared V1 presentation. No external framework required. */
+:root { --ink:#20392d; --muted:#617267; --line:#dce5de; --leaf:#286044; --wash:#f5f7f3; }
+* { box-sizing:border-box; }
+body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",sans-serif; font-size:15px; line-height:1.5; background:var(--wash); color:var(--ink); }
+h1,h2,h3,h4 { line-height:1.2; letter-spacing:-.025em; }
+h1 { font-size:clamp(26px,4vw,36px); margin:0 0 12px; }
+h2 { font-size:22px; margin:28px 0 14px; }
+h3,h4 { font-size:18px; }
+p { margin:0 0 16px; }
+a { color:var(--leaf); }
+small,.subtitle,.text-muted { color:var(--muted); }
+.site-header { background:#fff; border-bottom:1px solid var(--line); }
+.site-header-inner,.member-nav { max-width:1240px; margin:auto; padding:18px 24px; display:flex; gap:24px; align-items:center; justify-content:space-between; }
+.brand { text-decoration:none; color:var(--ink); flex-shrink:0; }
+.brand strong { display:block; font-size:25px; letter-spacing:-1px; }
+.brand strong span { color:#c4833f; }
+.brand small { display:block; font-size:12px; }
+.primary-nav,.member-nav { display:flex; flex-wrap:wrap; gap:8px 20px; }
+.primary-nav a,.member-nav a { text-decoration:none; font-weight:600; padding:8px 0; }
+.member-nav { justify-content:flex-start; padding-top:9px; padding-bottom:9px; border-top:1px solid var(--line); font-size:14px; }
+.primary-nav a[aria-current],.member-nav a[aria-current] { border-bottom:2px solid var(--leaf); }
+.nav-more { position:relative; }
+.nav-more summary { cursor:pointer; padding:8px 0; font-weight:600; }
+.nav-more > div { position:absolute; z-index:30; background:white; padding:12px 20px; border:1px solid var(--line); border-radius:8px; min-width:190px; box-shadow:0 8px 24px #20392d18; right:0; }
+.nav-more a { display:block; }
+main.site-main { max-width:1240px; margin:0 auto; padding:30px 24px 48px; min-height:65vh; }
+.site-footer { max-width:1240px; margin:auto; padding:20px 24px; border-top:1px solid var(--line); color:var(--muted); font-size:13px; }
+.skip-link { position:absolute; left:16px; top:-60px; background:white; padding:12px; z-index:100; }
+.skip-link:focus { top:10px; }
+:focus-visible { outline:3px solid #c4833f; outline-offset:3px; }
+body button,body .btn,body .button,body .action-button { display:inline-flex; justify-content:center; align-items:center; gap:6px; min-height:42px; padding:9px 15px; border:1px solid #b7cbbd; border-radius:7px; background:#fff; color:var(--leaf); font:inherit; font-weight:650; text-decoration:none; cursor:pointer; }
+body button[type=submit],body .btn-primary,body .btn-success,body .primary-button,body .button-dark { background:var(--leaf); border-color:var(--leaf); color:#fff; }
+body button:hover,body .btn:hover,body .button:hover,body .action-button:hover { filter:brightness(.94); }
+body button:disabled { opacity:.6; cursor:default; }
+body .delete-button,body .btn-danger { color:#973d32; background:#fff3f0; border-color:#e0bbb3; }
+body input:not([type=checkbox]):not([type=radio]):not([type=hidden]),body select,body textarea { font:inherit; min-height:42px; padding:9px 11px; border:1px solid #bdcbc1; border-radius:6px; background:#fff; color:var(--ink); max-width:100%; }
+input[type=checkbox],input[type=radio] { width:18px; height:18px; accent-color:var(--leaf); vertical-align:middle; }
+label { font-weight:550; }
+form > div { margin-bottom:12px; }
+form > div > label { display:inline-block; margin-bottom:5px; }
+textarea { min-height:90px; }
+.field-validation-error,.validation-summary-errors { color:#a13225; }
+.validation-summary-valid,.field-validation-valid,.d-none { display:none; }
+.alert,.empty-state { padding:18px; border:1px solid var(--line); border-radius:8px; background:#fff; margin:16px 0; }
+.alert-danger { border-color:#e0bbb3; background:#fff3f0; color:#873a2f; }
+.alert-success { background:#edf6ef; }
+.alert-warning { background:#fff8e9; }
+.mb-2 { margin-bottom:12px; } .mb-3 { margin-bottom:18px; } .mt-2 { margin-top:12px; }
+body table { width:100%; border-collapse:collapse; background:white; border:1px solid var(--line); font-size:14px; }
+body th,body td { padding:12px; text-align:left; border:0; border-bottom:1px solid var(--line); vertical-align:top; }
+body th { background:#edf2ec; font-weight:650; white-space:nowrap; }
+body tbody tr:hover { background:#fafcf8; }
+.table-scroll { overflow:auto; max-width:100%; margin:16px 0; border:1px solid var(--line); border-radius:8px; }
+.table-scroll table { margin:0!important; border:0; }
+.table-scroll form { margin:4px 0; }
+body .dashboard-wrap,body .add-wrap { padding:0; max-width:none; }
+body .dashboard-title,body .page-title { font-size:clamp(26px,4vw,34px); }
+body .dashboard-subtitle,body .subtitle { color:var(--muted); }
+body .dashboard-actions { align-items:center; }
+body .control-panel,body .basemap-panel,body .panel { border-color:var(--line); border-radius:9px; }
+body .control-header,body .definition-row { grid-template-columns:minmax(160px,1.25fr) minmax(150px,1fr) minmax(250px,2fr) 100px; }
+body .definition-row { gap:12px; padding:14px 16px; }
+body .definition-row form,body .definition-row form > div { margin:0; }
+body .channel-option { min-height:32px; font-size:13px; font-weight:400; white-space:normal; }
+body .channel-list { gap:4px 12px; }
+body .definition-row.location-row { background:#fafbf8; font-size:13px; }
+body .location-row .definition-name { font-weight:500; }
+.mobile-label { display:none; }
+.visibility-label { display:flex; gap:7px; align-items:center; font-size:13px; }
+body .public-control { justify-content:flex-start; }
+body .basemap-summary { font-size:16px; }
+.section-intro { color:var(--muted); max-width:680px; }
+.eyebrow { color:var(--leaf); font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.12em; margin:0 0 10px; }
+.search-hero { padding:14px 0 22px; }
+.search-form { display:grid; grid-template-columns:1.2fr 1fr 1fr 1fr auto; align-items:end; gap:14px; padding:20px; background:#fff; border:1px solid var(--line); border-radius:10px; margin-bottom:28px; }
+.search-form > div { margin:0; }
+.search-form label { display:block; margin-bottom:6px; }
+.search-form input,.search-form select { width:100%; }
+.result-grid,.tool-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; margin:20px 0 28px; }
+.result-card,.tool-card { background:white; border:1px solid var(--line); border-radius:9px; padding:20px; }
+.result-card h2,.tool-card h2 { font-size:20px; margin:8px 0; }
+.result-card p { margin-bottom:10px; }
+.result-card .btn { margin-top:10px; }
+.badge { display:inline-block; padding:3px 9px; border-radius:5px; background:#edf0eb; color:#536257; font-size:12px; font-weight:650; }
+.badge[data-status="Available"],.badge[data-status="Peak Season"] { background:#e4f2e7; color:#245b35; }
+.badge[data-status="Coming Soon"],.badge[data-status="Limited Availability"] { background:#fff1d6; color:#79541b; }
+.badge[data-status="Unavailable"],.badge[data-status="NotAvailable"] { background:#f3e9e6; color:#844a3a; }
+.farm-facts { display:flex; gap:16px 36px; flex-wrap:wrap; background:#fff; padding:20px; border:1px solid var(--line); border-radius:8px; }
+body ul.farm-products { box-shadow:none; }
+body ul.farm-products > li { padding:18px; gap:12px; }
+.farm-products .agriloco-notify-btn { margin-left:auto!important; }
+.tool-card { text-decoration:none; display:block; }
+.tool-card p { color:var(--muted); margin:0; }
+.tool-card:hover { border-color:var(--leaf); }
+.inventory-nav { display:flex; gap:8px 18px; flex-wrap:wrap; margin:0 0 24px; padding:12px 0; border-bottom:1px solid var(--line); }
+.inventory-nav a { font-size:14px; text-decoration:none; }
+.inventory-nav a[aria-current] { font-weight:750; text-decoration:underline; }
+body .inventory-page > form[method=post] { padding:20px; background:#fff; border:1px solid var(--line); border-radius:8px; display:flex; gap:12px 20px; flex-wrap:wrap; align-items:end; }
+body .inventory-page > form[method=post] > div { flex:1 1 210px; margin:0; }
+body .inventory-page > form[method=post] > br { display:none; }
+body .inventory-page > form[method=post] > div > input,body .inventory-page > form[method=post] > div > select { width:100%; }
+.inventory-page > form[method=get] { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+.inventory-page > form[method=get] input[type=text] { flex:1; min-width:180px; }
+.context-note { font-size:12px; color:var(--muted); }
+@media(max-width:1000px) { body .definition-row { grid-template-columns:1fr 1fr; } body .definition-row > :first-child { grid-column:1/-1; } .mobile-label { display:block; font-size:12px; font-weight:650; color:var(--muted); margin-bottom:5px; } .search-form { grid-template-columns:1fr 1fr; } .result-grid,.tool-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:600px) { .site-header-inner { align-items:flex-start; gap:12px; flex-direction:column; padding:16px; } .primary-nav { gap:6px 16px; font-size:14px; } .member-nav { padding:10px 16px; gap:2px 16px; } main.site-main { padding:24px 16px; } .search-form { grid-template-columns:1fr; padding:16px; } .result-grid,.tool-grid { grid-template-columns:1fr; } body .definition-row { grid-template-columns:1fr; } body .dashboard-header,body .page-header { flex-direction:column; gap:14px; } body .tree-row { flex-wrap:wrap; padding-left:14px!important; } body .tree-actions { flex-wrap:wrap; } .farm-products .agriloco-notify-btn { margin-left:0!important; } .nav-more > div { right:auto; left:0; } body .layout { grid-template-columns:1fr; } }/* Keep long legacy field widths inside compact forms. */
+body .inventory-page > form[method=post] > div { min-width:0; max-width:100%; }
+body .inventory-page > form[method=post] > h2,body .inventory-page > form[method=post] > h3 { flex-basis:100%; margin:4px 0 8px; }
+.inventory-menu > summary { display:none; }
+@media(max-width:600px) { .inventory-menu > summary { display:list-item; cursor:pointer; font-weight:650; padding:10px 0; } .inventory-menu { margin-bottom:20px; border-bottom:1px solid var(--line); } .inventory-menu .inventory-nav { margin-bottom:12px; border:0; } }
+body button.delete-button,body form[action*="handler=Delete"] button[type=submit] { background:#fff3f0; border-color:#e0bbb3; color:#973d32; }
+@media(max-width:900px) { body .layout .product-form { order:-1; } }

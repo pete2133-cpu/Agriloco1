@@ -1,4 +1,6 @@
-﻿using System.Net.Http.Json;
+using Agriloco.Api.Data;
+using Microsoft.EntityFrameworkCore;
+using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -9,10 +11,14 @@ namespace agriloco.api.Pages.Search
     public class CropsModel : PageModel
     {
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly AgrilocoContext _db;
+        public Dictionary<int, string> FarmNames { get; private set; } = new();
+        public Dictionary<int, string> FarmAddresses { get; private set; } = new();
 
-        public CropsModel(IHttpClientFactory httpClientFactory)
+        public CropsModel(IHttpClientFactory httpClientFactory, AgrilocoContext db)
         {
             _httpClientFactory = httpClientFactory;
+            _db = db;
         }
 
         [BindProperty(SupportsGet = true)]
@@ -42,7 +48,19 @@ namespace agriloco.api.Pages.Search
 
         public async Task OnGetAsync()
         {
+            try { await LoadResultsAsync(); }
+            catch (Exception ex) when (ex is HttpRequestException || ex is TaskCanceledException || ex is JsonException)
+            {
+                Message = "We could not load the food listings. Please try again.";
+                Results = new();
+            }
+        }
+
+        private async Task LoadResultsAsync()
+        {
             var client = _httpClientFactory.CreateClient("AgrilocoApiClient");
+            // Use this application under either IIS Express or the project launch profile.
+            client.BaseAddress = new Uri($"{Request.Scheme}://{Request.Host}{Request.PathBase}/");
 
             // Load category suggestions for datalist
             var catsResp = await client.GetAsync("api/Crops/categories");
@@ -72,7 +90,7 @@ namespace agriloco.api.Pages.Search
             var resp = await client.GetAsync(url);
             if (!resp.IsSuccessStatusCode)
             {
-                Message = $"Error loading crops: {(int)resp.StatusCode} {resp.ReasonPhrase}";
+                Message = "We could not load the food listings. Please try again.";
                 Results = new List<CropSearchOut>();
                 MapPoints = new List<MapPoint>();
                 MapPointsJson = "[]";
@@ -81,6 +99,12 @@ namespace agriloco.api.Pages.Search
 
             var crops = await resp.Content.ReadFromJsonAsync<List<CropSearchOut>>();
             var list = crops ?? new List<CropSearchOut>();
+            // Read-only display metadata; the search results and API payload stay unchanged.
+            var farmIds = list.Select(c => c.FarmId).Distinct().ToList();
+            var farms = await _db.Farms.AsNoTracking().Where(f => farmIds.Contains(f.Id))
+                .Select(f => new { f.Id, f.Name, f.Address }).ToListAsync();
+            FarmNames = farms.ToDictionary(f => f.Id, f => f.Name);
+            FarmAddresses = farms.ToDictionary(f => f.Id, f => f.Address ?? "");
 
             // Client-side contains filters
             if (!string.IsNullOrWhiteSpace(Category))

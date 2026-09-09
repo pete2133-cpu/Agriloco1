@@ -1,7 +1,9 @@
-﻿@page
+@page
 @model Agriloco1.Pages.Farmer.Inventory.InventoryItemsModel
 
-<h1>Inventory Items</h1>
+<partial name="_InventoryNav" />
+<div class="inventory-page">
+<h1>Stock items</h1>
 @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
 {
     <div style="padding:10px; margin-bottom:15px; border:1px solid red; color:red;">
@@ -9,9 +11,9 @@
     </div>
 }
 
-<p>Master list of items and saved receivable variations.</p>
+<p>Manage ingredients, produce, packaging and their purchase sizes.</p>
 
-<p><strong>Current Farm ID:</strong> @Model.FarmId</p>
+<details class="context-note"><summary>Farm reference</summary><p>@Model.FarmId</p></details>
 
 <form method="get" style="margin-bottom:20px;">
     <input type="hidden" name="FarmId" value="@Model.FarmId" />
@@ -43,7 +45,7 @@
     </div>
 
     <div>
-        <label>Default End Measure Unit</label><br />
+        <label>Stock unit</label><br />
         <select asp-for="NewItem.BaseUnit">
             <option value="units">units</option>
             <option value="kg">kg</option>
@@ -103,7 +105,7 @@
                         <form method="post" asp-page-handler="ToggleActive" style="display:inline; margin-left:8px;">
                             <input type="hidden" name="id" value="@row.ItemId" />
                             <input type="hidden" name="farmId" value="@Model.FarmId" />
-                            <button type="submit">Toggle Item</button>
+                            <button type="submit">Change active status</button>
                         </form>
 
                         <form method="post" asp-page-handler="Delete" style="display:inline; margin-left:8px;"
@@ -118,3 +120,4 @@
         }
     </tbody>
 </table>
+</div>

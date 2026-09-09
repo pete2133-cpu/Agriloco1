@@ -1,12 +1,14 @@
-﻿@page
+@page
 @model Agriloco1.Pages.Farmer.Inventory.ReceivingLotsModel
 @using System.Text.Json
 
-<h1>Receiving Lots</h1>
+<partial name="_InventoryNav" />
+<div class="inventory-page">
+<h1>Receiving</h1>
 
 <p>Record inventory coming into the business.</p>
 
-<p><strong>Current Farm ID:</strong> @Model.FarmId</p>
+<details class="context-note"><summary>Farm reference</summary><p>@Model.FarmId</p></details>
 
 <form method="get" style="margin-bottom:20px;">
     <input type="hidden" name="FarmId" value="@Model.FarmId" />
@@ -95,7 +97,7 @@
 
     <br />
 
-    <button type="submit">Create Receiving Lot</button>
+    <button type="submit">Record delivery</button>
 </form>
 
 <h2>Received Inventory</h2>
@@ -207,3 +209,4 @@
     document.getElementById("itemSearchBox").addEventListener("change", refreshVariationList);
     document.getElementById("itemSearchBox").addEventListener("input", refreshVariationList);
 </script>
+</div>

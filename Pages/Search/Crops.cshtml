@@ -1,46 +1,16 @@
-﻿@page
+@page
 @model agriloco.api.Pages.Search.CropsModel
 @using Agriloco.Api.Dtos
 @{
-    ViewData["Title"] = "Search Crops";
+    ViewData["Title"] = "Find local food";
 }
 
-@functions {
-    // Tries to read a name field if it exists on CropSearchOut (FarmName/FarmerName/MemberName),
-    // but does NOT require the DTO to have it yet. If not found, it falls back to "Farm #ID".
-    private string GetFarmDisplayName(CropSearchOut c)
-    {
-        if (c == null) return "Farm";
+<div class="search-hero"><p class="eyebrow">From farms near you</p><h1>Find local food.</h1><p class="section-intro">Explore crops, varieties and ways to buy directly from local farms.</p></div>
 
-        var t = c.GetType();
-
-        string? TryGetString(string propName)
-        {
-            var p = t.GetProperty(propName);
-            if (p == null) return null;
-            var v = p.GetValue(c);
-            return v as string;
-        }
-
-        var name =
-            TryGetString("FarmName") ??
-            TryGetString("FarmerName") ??
-            TryGetString("MemberName") ??
-            TryGetString("DisplayName");
-
-        if (!string.IsNullOrWhiteSpace(name))
-            return name.Trim();
-
-        return $"Farm #{c.FarmId}";
-    }
-}
-
-<h1>Search Crops</h1>
-
-<form method="get" style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:12px;">
+<form method="get" class="search-form">
     <div>
-        <label for="Category">Category</label><br />
-        <input id="Category" name="Category" value="@Model.Category" list="categoryList" />
+        <label for="Category">Crop or product</label><br />
+        <input placeholder="e.g. Apples" id="Category" name="Category" value="@Model.Category" list="categoryList" />
         <datalist id="categoryList">
             @foreach (var c in Model.CategorySuggestions)
             {
@@ -51,15 +21,15 @@
 
     <div>
         <label for="Variety">Variety</label><br />
-        <input id="Variety" name="Variety" value="@Model.Variety" />
+        <input placeholder="Any variety" id="Variety" name="Variety" value="@Model.Variety" />
     </div>
 
     <div>
-        <label for="OfferingType">Offering Type</label><br />
+        <label for="OfferingType">How to buy</label><br />
         <select id="OfferingType" name="OfferingType">
-            <option value="" selected="@(string.IsNullOrEmpty(Model.OfferingType) ? "selected" : null)">(any)</option>
-            <option value="PickYourOwn" selected="@(Model.OfferingType == "PickYourOwn" ? "selected" : null)">PickYourOwn</option>
-            <option value="ReadyPicked" selected="@(Model.OfferingType == "ReadyPicked" ? "selected" : null)">ReadyPicked</option>
+            <option value="" selected="@(string.IsNullOrEmpty(Model.OfferingType) ? "selected" : null)">Any</option>
+            <option value="PickYourOwn" selected="@(Model.OfferingType == "PickYourOwn" ? "selected" : null)">Pick your own</option>
+            <option value="ReadyPicked" selected="@(Model.OfferingType == "ReadyPicked" ? "selected" : null)">Ready picked</option>
             <option value="Frozen" selected="@(Model.OfferingType == "Frozen" ? "selected" : null)">Frozen</option>
         </select>
     </div>
@@ -67,55 +37,41 @@
     <div>
         <label for="Availability">Availability</label><br />
         <select id="Availability" name="Availability">
-            <option value="" selected="@(string.IsNullOrEmpty(Model.Availability) ? "selected" : null)">(any)</option>
+            <option value="" selected="@(string.IsNullOrEmpty(Model.Availability) ? "selected" : null)">Any</option>
             <option value="Available" selected="@(Model.Availability == "Available" ? "selected" : null)">Available</option>
-            <option value="NotAvailable" selected="@(Model.Availability == "NotAvailable" ? "selected" : null)">NotAvailable</option>
+            <option value="NotAvailable" selected="@(Model.Availability == "NotAvailable" ? "selected" : null)">Unavailable</option>
         </select>
     </div>
 
     <div>
-        <button type="submit">Search</button>
+        <button type="submit">Find food</button>
     </div>
 </form>
 
 @if (!string.IsNullOrEmpty(Model.Message))
 {
-    <div style="color:red;margin-bottom:10px;">
+    <div class="alert alert-danger" role="alert">
         @Model.Message
     </div>
 }
 
 @if (Model.Results.Any())
 {
-    <table border="1" cellpadding="4" cellspacing="0" style="margin-bottom:14px;">
-        <thead>
-            <tr>
-                <th>Farm</th>
-                <th>Category</th>
-                <th>Variety</th>
-                <th>Availability</th>
-                <th>OfferingType</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var c in Model.Results)
-            {
-                <tr>
-                    <td>
-                        <a href="/public/farm?id=@c.FarmId"
-                           style="font-weight:700;text-decoration:none;color:#0d6efd;">
-                            @GetFarmDisplayName(c)
-                        </a>
-                    </td>
-                    <td>@c.Category</td>
-                    <td>@c.Variety</td>
-                    <td>@c.Availability</td>
-                    <td>@c.OfferingType</td>
-                </tr>
-            }
-        </tbody>
-    </table>
-
+    <h2>@Model.Results.Count matching @(Model.Results.Count == 1 ? "listing" : "listings")</h2>
+    <div class="result-grid">
+        @foreach (var c in Model.Results)
+        {
+            <article class="result-card">
+                <span class="badge" data-status="@c.Availability">@(c.Availability == "NotAvailable" ? "Unavailable" : string.IsNullOrWhiteSpace(c.Availability) ? "Check with farm" : c.Availability)</span>
+                <h2>@c.Category</h2>
+                @if (!string.IsNullOrWhiteSpace(c.Variety)) { <p>@c.Variety</p> }
+                <p><strong>@(Model.FarmNames.GetValueOrDefault(c.FarmId, "Local farm"))</strong></p>
+                @if (Model.FarmAddresses.TryGetValue(c.FarmId, out var address) && !string.IsNullOrWhiteSpace(address)) { <p class="text-muted">@address</p> }
+                <p class="text-muted">@(c.OfferingType == "PickYourOwn" ? "Pick your own" : c.OfferingType == "ReadyPicked" ? "Ready picked" : string.IsNullOrWhiteSpace(c.OfferingType) ? "Contact the farm for buying options" : c.OfferingType)</p>
+                <a class="btn" asp-page="/Public/Farm" asp-route-id="@c.FarmId">View farm &amp; details →</a>
+            </article>
+        }
+    </div>
     <!-- ✅ NEW: Map shows farms from search results (if they have lat/lng) -->
     <div style="margin-top:10px;">
         <h3 style="margin: 0 0 8px 0;">Map of Results</h3>
@@ -124,14 +80,14 @@
         @if (Model.MapPoints == null || Model.MapPoints.Count == 0)
         {
             <div class="text-muted" style="margin-top:8px;">
-                No geolocation data found on results yet. (Once farms have Lat/Lng stored, markers will appear here.)
+                Some farms may not appear on the map. You can still view every listing above.
             </div>
         }
     </div>
 }
-else
+else if (string.IsNullOrEmpty(Model.Message))
 {
-    <p>No results.</p>
+    <div class="empty-state"><h2>No matching products</h2><p>Try another crop or variety, or broaden your availability filters.</p><a asp-page="/Search/Crops">Clear filters and browse all food</a></div>
 }
 
 @section Scripts {

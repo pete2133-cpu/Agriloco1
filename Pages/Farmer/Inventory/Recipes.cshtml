@@ -1,6 +1,8 @@
-﻿@page
+@page
 @model Agriloco1.Pages.Farmer.Inventory.RecipesModel
 
+<partial name="_InventoryNav" />
+<div class="inventory-page">
 <h1>Recipes</h1>
 
 <p>
@@ -8,7 +10,7 @@
     Recipes do not consume inventory until they are used in a production batch.
 </p>
 
-<p><strong>Current Farm ID:</strong> @Model.FarmId</p>
+<details class="context-note"><summary>Farm reference</summary><p>@Model.FarmId</p></details>
 
 <form method="get" style="margin-bottom:20px;">
     <input type="hidden" name="FarmId" value="@Model.FarmId" />
@@ -165,3 +167,4 @@
         }
     </tbody>
 </table>
+</div>
