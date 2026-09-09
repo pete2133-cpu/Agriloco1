@@ -74,10 +74,8 @@ namespace Agriloco1.Pages.Farmer
         {
             FarmId = farmId;
 
-            var item = await _db.FarmDefinitions
-                .FirstOrDefaultAsync(x =>
-                    x.Id == farmDefinitionId &&
-                    x.FarmId == FarmId);
+            var definitions = await _db.FarmDefinitions.Where(x => x.FarmId == FarmId).ToListAsync();
+            var item = definitions.FirstOrDefault(x => x.Id == farmDefinitionId && x.IsActive);
 
             if (item != null &&
                 StatusOptions.Contains(status))
@@ -118,11 +116,7 @@ namespace Agriloco1.Pages.Farmer
                 // The status change must succeed even if the
                 // email server is temporarily unavailable.
 
-                item.Status =
-                    newStatus;
-
-                item.UpdatedAt =
-                    DateTime.Now;
+                FarmHierarchyChanges.ApplyStatus(definitions, item, newStatus);
 
                 await _db.SaveChangesAsync();
 
@@ -492,48 +486,35 @@ namespace Agriloco1.Pages.Farmer
         {
             FarmId = farmId;
 
-            var itemExists = await _db.FarmDefinitions
-                .AnyAsync(x =>
-                    x.Id == farmDefinitionId &&
-                    x.FarmId == FarmId);
-
+            var definitions = await _db.FarmDefinitions.Where(x => x.FarmId == FarmId).ToListAsync();
+            var selected = definitions.FirstOrDefault(x => x.Id == farmDefinitionId && x.IsActive);
             var channelExists = await _db.AvailabilityChannels
-                .AnyAsync(x =>
-                    x.Id == availabilityChannelId &&
-                    x.IsActive);
+                .AnyAsync(x => x.Id == availabilityChannelId && x.IsActive);
+            if (selected == null || !channelExists)
+                return RedirectToPage(new { farmId = FarmId });
 
-            if (!itemExists || !channelExists)
+            var affectedIds = FarmHierarchyChanges.Branch(definitions, selected, isEnabled).Select(x => x.Id).ToList();
+            var links = await _db.FarmDefinitionChannels
+                .Where(x => affectedIds.Contains(x.FarmDefinitionId) && x.AvailabilityChannelId == availabilityChannelId)
+                .ToListAsync();
+            var now = DateTime.Now;
+            foreach (var id in affectedIds)
             {
-                return RedirectToPage(
-                    new
-                    {
-                        farmId = FarmId
-                    });
-            }
-
-            var link = await _db.FarmDefinitionChannels
-                .FirstOrDefaultAsync(x =>
-                    x.FarmDefinitionId == farmDefinitionId &&
-                    x.AvailabilityChannelId == availabilityChannelId);
-
-            if (link == null)
-            {
-                link = new FarmDefinitionChannel
+                var existing = links.Where(x => x.FarmDefinitionId == id).ToList();
+                if (existing.Count == 0 && isEnabled)
                 {
-                    FarmDefinitionId = farmDefinitionId,
-                    AvailabilityChannelId = availabilityChannelId,
-                    IsEnabled = isEnabled,
-                    UpdatedAt = DateTime.Now
-                };
-
-                _db.FarmDefinitionChannels.Add(link);
+                    _db.FarmDefinitionChannels.Add(new FarmDefinitionChannel {
+                        FarmDefinitionId = id, AvailabilityChannelId = availabilityChannelId,
+                        IsEnabled = true, UpdatedAt = now
+                    });
+                }
+                foreach (var link in existing)
+                {
+                    link.IsEnabled = isEnabled;
+                    link.UpdatedAt = now;
+                }
             }
-            else
-            {
-                link.IsEnabled = isEnabled;
-                link.UpdatedAt = DateTime.Now;
-            }
-
+            // EF saves the entire branch atomically. Other methods and sibling branches are untouched.
             await _db.SaveChangesAsync();
 
             return RedirectToPage(
