@@ -28,14 +28,8 @@ public record HarvestReceivingDefaults(string Supplier, string Item, string Pack
             return new(supplier, "", "", harvest.VarietyName, harvest.Location,
                 "Supplier and harvest details filled. Choose the inventory item: there is no single matching saved item for this crop.");
         var item = matches[0];
-        var packageMatches = packages.Where(x => x.IsActive && x.FarmId == harvest.FarmId && x.InventoryItemId == item.Id
-            && Key(x.PackageName) == Key(harvest.Unit)).ToList();
-        var package = packageMatches.Count == 1 ? packageMatches[0] : null;
-        return new(supplier, $"{item.Id} | {item.ItemName} ({item.BaseUnit})",
-            package == null ? "" : $"{package.Id} | {item.ItemName} - {package.PackageName} ({package.PackageQuantity} {package.PackageUnit} each)",
+        return new(supplier, $"{item.Id} | {item.ItemName} ({item.BaseUnit})", "",
             harvest.VarietyName, harvest.Location,
-            package != null ? "Filled from your harvest. Review the item and package, then enter the amount received."
-            : Key(item.BaseUnit) == Key(harvest.Unit) ? $"Filled from your harvest. Receive in {item.BaseUnit}, or choose a package."
-            : $"Supplier and item filled. Harvest was recorded in {harvest.Unit}; choose a package or enter the received amount in {item.BaseUnit}. No quantity conversion has been applied.");
+            "Supplier, item and crop variety filled. Choose the receiving unit and enter the amount received; it can differ from the harvest unit.");
     }
 }

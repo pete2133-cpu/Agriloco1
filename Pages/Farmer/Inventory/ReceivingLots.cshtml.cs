@@ -34,6 +34,7 @@ namespace Agriloco1.Pages.Farmer.Inventory
         public List<InventoryItemOption> InventoryItemOptions { get; set; } = new();
         public List<ItemVariationOption> ItemVariationOptions { get; set; } = new();
 
+        public Dictionary<int, HarvestTransfer> HarvestSourcesByLotId { get; set; } = new();
         public Dictionary<int, string> CustomDetailsByLotId { get; set; } = new();
 
         public string? ErrorMessage { get; set; }
@@ -86,6 +87,12 @@ namespace Agriloco1.Pages.Farmer.Inventory
                 || !ModelState.IsValid || NewReceiving.ReceivedDate == default)
             {
                 ErrorMessage = "Select your harvest or scan a valid Agriloco harvest QR, and check the date and quantity.";
+                await OnGetAsync();
+                return Page();
+            }
+            if (NewReceiving.ItemVariationSearch != "base" && ExtractLeadingId(NewReceiving.ItemVariationSearch) == null)
+            {
+                ErrorMessage = "Choose a receiving unit: the item's base unit or one of its saved packages.";
                 await OnGetAsync();
                 return Page();
             }
@@ -268,7 +275,7 @@ namespace Agriloco1.Pages.Farmer.Inventory
                 .Select(x => new InventoryItemOption
                 {
                     ItemId = x.Id,
-                    DisplayName = $"{x.ItemName} ({x.BaseUnit})"
+                    DisplayName = $"{x.ItemName} ({x.BaseUnit})", BaseUnit = x.BaseUnit
                 })
                 .ToList();
 
@@ -314,6 +321,11 @@ namespace Agriloco1.Pages.Farmer.Inventory
                 .ThenBy(x => x.Id)
                 .ToListAsync();
 
+            HarvestSourcesByLotId = new();
+            foreach (var field in fields.Where(x => x.FieldName == HarvestTransfer.FieldName))
+                if (HarvestTransfer.TryParse(field.FieldValue, out var source))
+                    HarvestSourcesByLotId[field.ReceivingLotId] = source!;
+
             CustomDetailsByLotId = fields
                 .GroupBy(x => x.ReceivingLotId)
                 .ToDictionary(
@@ -358,6 +370,7 @@ namespace Agriloco1.Pages.Farmer.Inventory
         public class InventoryItemOption
         {
             public int ItemId { get; set; }
+            public string BaseUnit { get; set; } = "";
             public string DisplayName { get; set; } = "";
         }
 

@@ -5,7 +5,7 @@
 2. Go to Farmer dashboard > Inventory & production > Harvests.
 3. On a harvest with crop/variety/row saved, choose **QR label**. Check the farm name/address, harvest lot number, crop, variety, row, harvest date and original quantity/unit.
 4. Use **Print label / Save PDF**, or leave the QR visible on screen. A previously printed label does not update when the harvest is edited.
-5. Choose **Receive** beside a harvest, or choose **One of my harvests** in Receiving. Confirm the selected harvest. Select the matching stock item and optional package, enter the actual amount received, and record delivery. A supplier is optional here; blank uses the harvest farm name.
+5. Choose **Receive** beside a harvest, or choose **One of my harvests** in Receiving. Confirm the selected harvest. Confirm the item and crop variety, choose a receiving unit, and enter the actual amount received, and record delivery. A supplier is optional here; blank uses the harvest farm name.
 6. Open the new receiving lot's **Details**. Original harvest source must show the farm, lot, crop, variety, row, harvest date and original quantity. The receipt quantity is separate.
 7. For the external workflow, choose **Scan another farm's harvest** in Receiving. Scan a printed/on-screen label with the camera, upload a clear QR image, or paste the label's transfer text. Review the decoded source, then choose the receiving business's own inventory item/package and quantity.
 8. A regular supplier delivery still works without any harvest source. Invalid QR data must show an error and create no receipt.
@@ -47,9 +47,10 @@ Camera scanning needs permission on HTTPS or localhost. On a phone, localhost re
 - wwwroot/css/v1.css — source card and print label styling.
 - HARVEST-RECEIVING.md — workflow, format and test notes.
 
-## Own-harvest form defaults
-Selecting a saved own harvest (including the Harvests page Receive link) now fills the farm supplier, matching inventory item and matching package. Harvest variety and row/location are shown separately because inventory package variations describe packaging.
-Matching uses active records from the receiving farm only. Whole crop names allow simple singular/plural differences (Apple/Apples); matching does not use substrings. A unique package matching the harvest unit (bushels/Bushel) is selected. Missing or ambiguous matches prompt a manual choice rather than creating inventory or choosing an arbitrary package.
-The supplied own-farm name can save without creating a duplicate supplier. Fields remain editable; quantity is still entered by the receiver. Changing harvest/source clears stale automatic selections, and validation redisplays preserve edits.
-Verified: zero build errors (two existing nullable warnings); 28 service/handler checks; browser selecting Golden Delicious Row 39 filled Wheelbarrow Orchards, Apples, Bushel and saved two bushels as the existing 40 kg package calculation. Switching to Garlic Scapes cleared the unmatched inventory/package fields. Tests used only a copied database.
-Additional file: Services/HarvestReceivingDefaults.cs. Also updated ReceivingLots.cshtml/.cshtml.cs and wwwroot/js/receiving-harvest.js.
+## Crop variety and receiving unit
+Selecting a saved own harvest fills the supplier and matching inventory item. Crop variety (for example Golden Delicious) appears directly below the item, from the retained harvest snapshot. Scanned harvests also show their crop variety.
+Receiving unit is a separate required selection: the item's base unit (for example kg) or one of its saved packages (for example Bushel or Bin). It is not preselected from the harvest unit. A harvest recorded in bushels can be received in kg; the receiver enters the actual received quantity. Package options use the existing saved quantity per package; no conversion of the original harvest quantity occurs.
+The receiving list and details now label crop variety and receiving unit separately. Existing database property names remain unchanged for compatibility; the crop variety comes from the harvest snapshot rather than the legacy package VariationName property.
+Changing harvest/item clears the unit choice. Validation redisplays preserve the receiver's selection. Missing or ambiguous item matches still need a manual choice.
+Verified: zero build errors (two existing nullable warnings); 30 service/handler checks. Browser test selected Golden Delicious Row 39 from a 7-bushel harvest, chose kg and saved 15 kg. The saved row showed Apples / Golden Delicious / kg and retained the original source quantity of 7 bushels. Test writes used only a copied database.
+Files for this correction: Services/HarvestReceivingDefaults.cs; ReceivingLots.cshtml/.cshtml.cs; ReceivingLotDetails.cshtml; wwwroot/js/receiving-harvest.js; this document.

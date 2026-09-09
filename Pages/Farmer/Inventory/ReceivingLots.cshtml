@@ -48,8 +48,6 @@
             @if (!Model.HarvestOptions.Any()) { <p>No harvests saved for this farm yet. Record a harvest first, or use a supplier delivery.</p> }
         </div>
         <div id="ownHarvestDetails" hidden>
-            <label for="ownHarvestVariety">Harvest variety</label>
-            <input id="ownHarvestVariety" readonly />
             <label for="ownHarvestRow">Harvest row / location</label>
             <input id="ownHarvestRow" readonly />
             <p id="ownHarvestMessage" role="status"></p>
@@ -115,20 +113,18 @@
     <br />
 
     <div>
-        <label>Item Variation / Package <small>(optional)</small></label><br />
-        <input asp-for="NewReceiving.ItemVariationSearch"
-               id="variationSearchBox"
-               list="itemVariationList"
-               placeholder="Optional: select package variation..."
-               style="width:600px;" />
-
-        <datalist id="itemVariationList">
-        </datalist>
-
-        <br />
-        <small>If no variation is selected, the quantity is received directly in the item’s base unit.</small>
+        <label for="ownHarvestVariety">Crop variety</label><br />
+        <input id="ownHarvestVariety" readonly placeholder="Filled from the harvest record" />
+        <small>The crop variety, such as Golden Delicious, stays attached to the harvest source.</small>
     </div>
-
+    <br />
+    <div>
+        <label for="variationSearchBox">Receiving unit</label><br />
+        <select asp-for="NewReceiving.ItemVariationSearch" id="variationSearchBox" required>
+            <option value="">Choose receiving unit...</option>
+        </select>
+        <small>Choose the item's base unit (for example kg) or a saved package (for example Bushel or Bin). Package totals use your saved quantity per package.</small>
+    </div>
     <br />
 
     <div>
@@ -150,7 +146,8 @@
             <th>Date</th>
             <th>Supplier</th>
             <th>Item</th>
-            <th>Variation</th>
+            <th>Crop variety</th>
+            <th>Receiving unit</th>
             <th>Specifications</th>
             <th>Units Received</th>
             <th>Usable Per Unit</th>
@@ -164,7 +161,7 @@
         @if (!Model.ReceivingLots.Any())
         {
             <tr>
-                <td colspan="12">No receiving lots found.</td>
+                <td colspan="13">No receiving lots found.</td>
             </tr>
         }
         else
@@ -176,7 +173,8 @@
                     <td>@lot.ReceivedDate.ToString("yyyy-MM-dd")</td>
                     <td>@lot.SupplierName</td>
                     <td>@lot.InventoryItemName</td>
-                    <td>@lot.VariationName</td>
+                    <td>@(Model.HarvestSourcesByLotId.GetValueOrDefault(lot.Id)?.Variety ?? "—")</td>
+                    <td>@(lot.InventoryItemPackageId.HasValue ? lot.VariationName : lot.UsableUnit)</td>
 
                     <td>
                         @if (Model.CustomDetailsByLotId.ContainsKey(lot.Id))
@@ -213,11 +211,14 @@
 <script>
     const ownHarvestDefaults = @Html.Raw(JsonSerializer.Serialize(Model.HarvestDefaults));
     const fillOwnHarvestOnLoad = @(Request.Method == "GET" ? "true" : "false");
+    const receivingBaseUnits = @Html.Raw(JsonSerializer.Serialize(Model.InventoryItemOptions.ToDictionary(x => x.ItemId, x => x.BaseUnit)));
+    const savedReceivingUnit = @Html.Raw(JsonSerializer.Serialize(Model.NewReceiving.ItemVariationSearch));
     const allVariations = @Html.Raw(JsonSerializer.Serialize(
                 Model.ItemVariationOptions.Select(v => new
                 {
                         itemId = v.ItemId,
-                        value = $"{v.PackageId} | {v.DisplayName}"
+                        value = $"{v.PackageId} | {v.DisplayName}",
+                        label = v.DisplayName
                 })
         ));
 
@@ -231,22 +232,24 @@
     function refreshVariationList(clearSelection = true) {
         const itemBox = document.getElementById("itemSearchBox");
         const variationBox = document.getElementById("variationSearchBox");
-        const variationList = document.getElementById("itemVariationList");
+        const previous = clearSelection ? "" : savedReceivingUnit;
 
         const itemId = getLeadingId(itemBox.value);
 
-        if (clearSelection) variationBox.value = "";
-        variationList.innerHTML = "";
+        variationBox.replaceChildren(new Option("Choose receiving unit...", ""));
 
         if (!itemId) return;
 
+        variationBox.add(new Option(receivingBaseUnits[itemId] + " (base unit)", "base"));
         const filtered = allVariations.filter(v => v.itemId === itemId);
 
         filtered.forEach(v => {
             const option = document.createElement("option");
             option.value = v.value;
-            variationList.appendChild(option);
+            option.textContent = v.label;
+            variationBox.appendChild(option);
         });
+        variationBox.value = previous || "";
     }
 
     document.getElementById("itemSearchBox").addEventListener("change", () => refreshVariationList());

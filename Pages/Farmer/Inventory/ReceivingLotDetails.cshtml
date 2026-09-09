@@ -42,7 +42,8 @@
     <p>
         <strong>Supplier:</strong> @Model.ReceivingLot.SupplierName<br />
         <strong>Item:</strong> @Model.ReceivingLot.InventoryItemName<br />
-        <strong>Variation:</strong> @Model.ReceivingLot.VariationName
+        <strong>Crop variety:</strong> @(Model.HarvestSource?.Variety ?? "—")<br />
+        <strong>Receiving unit:</strong> @(Model.ReceivingLot.InventoryItemPackageId.HasValue ? Model.ReceivingLot.VariationName : Model.ReceivingLot.UsableUnit)
     </p>
 
     <p>

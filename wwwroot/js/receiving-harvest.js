@@ -22,9 +22,10 @@
             if (!text.startsWith('AGRILOCO-HARVEST:1:')) throw new Error();
             const data = JSON.parse(text.slice('AGRILOCO-HARVEST:1:'.length));
             if (!data.Farm || !data.Lot || !data.Crop || !data.Date || !(data.Quantity > 0) || !data.Unit) throw new Error();
+            if (mode.value === "qr") document.getElementById("ownHarvestVariety").value = data.Variety || "Not recorded";
             preview.textContent = `${data.Farm} · ${data.Address || ''} · ${data.Lot} · ${data.Crop} / ${data.Variety || ''} · ${data.Row || ''} · Harvested ${data.Date} · ${data.Quantity} ${data.Unit}`;
             return true;
-        } catch { preview.textContent = payload.value ? 'This is not a supported Agriloco harvest code. Scan a harvest label or paste its transfer text.' : ''; return false; }
+        } catch { if (mode.value === "qr") document.getElementById("ownHarvestVariety").value = ""; preview.textContent = payload.value ? 'This is not a supported Agriloco harvest code. Scan a harvest label or paste its transfer text.' : ''; return false; }
     }
     function decode(source, width, height) {
         // Bound image memory; QR labels should fill most of the image.
@@ -78,6 +79,7 @@
     function fillOwnHarvest(fillFields = true) {
         const defaults = mode.value === 'own' ? ownHarvestDefaults[harvestSelect.value] : null;
         document.getElementById('ownHarvestDetails').hidden = !defaults;
+        if (!defaults) document.getElementById("ownHarvestVariety").value = "";
         if (defaults) {
             document.getElementById('ownHarvestVariety').value = defaults.Variety || 'Not recorded';
             document.getElementById('ownHarvestRow').value = defaults.Row || 'Not recorded';
@@ -101,9 +103,9 @@
         payload.required = mode.value === 'qr';
         document.getElementById('NewReceiving_SupplierSearch').required = mode.value === 'manual';
     }
-    mode.addEventListener('change', () => { updateMode(); fillOwnHarvest(); });
+    mode.addEventListener('change', () => { updateMode(); fillOwnHarvest(); showSource(); });
     payload.addEventListener('input', showSource);
     window.addEventListener('pagehide', stop);
     document.addEventListener('visibilitychange', () => { if (document.hidden) stop(); });
-    updateMode(); showSource(); fillOwnHarvest(fillOwnHarvestOnLoad);
+    updateMode(); fillOwnHarvest(fillOwnHarvestOnLoad); showSource();
 })();
