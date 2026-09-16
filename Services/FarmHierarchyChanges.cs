@@ -32,10 +32,12 @@ public static class FarmHierarchyChanges
 
     public static void ApplyStatus(IEnumerable<FarmDefinition> definitions, FarmDefinition selected, string status)
     {
+        if (selected.IsPathway) return;
         var enabling = PublicFoodCatalog.IsAvailable(status);
         var now = DateTime.Now;
         foreach (var node in Branch(definitions, selected, enabling))
         {
+            if (node.IsPathway) continue;
             // Preserve an already-available ancestor's season/status detail.
             if (enabling && node.Id != selected.Id && PublicFoodCatalog.IsAvailable(node.Status)) continue;
             node.Status = node.Id == selected.Id || !enabling ? status : "Available";

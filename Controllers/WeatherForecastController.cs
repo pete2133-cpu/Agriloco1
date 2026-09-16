@@ -1,7 +1,9 @@
+using Agriloco.Api.Security;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Agriloco1.Controllers
 {
+    [DevelopmentOnly]
     [ApiController]
     [Route("[controller]")]
     public class WeatherForecastController : ControllerBase

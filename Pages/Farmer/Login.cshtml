@@ -1,0 +1,13 @@
+@page
+@model Agriloco.Api.Pages.Farmer.LoginModel
+@{
+    ViewData["Title"] = "Farmer login";
+}
+<h1>Farmer login</h1>
+<form method="post">
+    <div asp-validation-summary="All" role="alert"></div>
+    <input type="hidden" asp-for="ReturnUrl" />
+    <p><label asp-for="Username"></label> <input asp-for="Username" autocomplete="username" required /></p>
+    <p><label asp-for="Password"></label> <input asp-for="Password" type="password" autocomplete="current-password" required /></p>
+    <button type="submit">Sign in</button>
+</form>

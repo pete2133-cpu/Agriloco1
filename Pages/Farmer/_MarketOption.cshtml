@@ -1,0 +1,21 @@
+@model Agriloco1.Pages.Farmer.MarketDetailsModel.OptionInput
+@using Agriloco.Api.Models
+@using System.Globalization
+@{ var prefix = "Options[" + ViewData["OptionIndex"] + "]"; }
+<fieldset class="selling-option">
+    <legend>Selling option</legend>
+    <button type="button" class="remove-option">Remove option</button>
+    <input type="hidden" name="@(prefix).Id" value="@Model.Id" />
+    <div class="option-fields">
+        <label>Option name<input name="@(prefix).Name" value="@Model.Name" maxlength="100" placeholder="e.g. 5 lb bag" /></label>
+        <label>Price<input name="@(prefix).Price" value="@Model.Price?.ToString(CultureInfo.InvariantCulture)" type="number" min="0" step="0.000001" /></label>
+        <label>Currency<input name="@(prefix).Currency" value="@Model.Currency" maxlength="3" pattern="[A-Za-z]{3}" placeholder="CAD" /></label>
+        <label>Sell quantity<input name="@(prefix).SellQuantity" value="@Model.SellQuantity?.ToString(CultureInfo.InvariantCulture)" type="number" min="0.000001" step="0.000001" /></label>
+        <label>Unit<select name="@(prefix).SellUnit"><option value="">Not specified</option>@foreach(var unit in MarketUnits.Units) { <option value="@unit" selected="@(unit == Model.SellUnit)">@unit</option> }</select></label>
+        <label>Package type<select name="@(prefix).PackageType"><option value="">Not specified</option>@foreach(var package in MarketUnits.Packages) { <option value="@package" selected="@(package == Model.PackageType)">@package</option> }</select></label>
+        <label>SKU (private)<input name="@(prefix).Sku" value="@Model.Sku" maxlength="100" /></label>
+        <label>Barcode / UPC / GTIN (private)<input name="@(prefix).Barcode" value="@Model.Barcode" maxlength="100" /></label>
+    </div>
+    <label class="market-check"><input type="checkbox" name="@(prefix).TrackInventory" value="true" checked="@Model.TrackInventory" /> Track inventory for this option</label><input type="hidden" name="@(prefix).TrackInventory" value="false" />
+    <label class="market-check"><input type="checkbox" name="@(prefix).IsPublic" value="true" checked="@Model.IsPublic" /> Show this selling option in Market</label><input type="hidden" name="@(prefix).IsPublic" value="false" />
+</fieldset>

@@ -1,4 +1,5 @@
-﻿using System;
+using Agriloco.Api.Security;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
@@ -119,6 +120,7 @@ namespace Agriloco.Api.Controllers
         // ============================================================
         // POST: /api/Crops
         // ============================================================
+        [FarmMapWrite("input.FarmId")]
         [HttpPost]
         public async Task<ActionResult<CropSearchOut>> CreateCrop([FromBody] CropCreateIn input)
         {
@@ -260,13 +262,9 @@ namespace Agriloco.Api.Controllers
                     OfferingTypes = c.OfferingTypes,
                     YearPlanted = c.YearPlanted,
                     Rootstock = c.Rootstock,
-                    Notes = c.Notes,
+
                     AvailabilityNote = c.AvailabilityNote,
-                    InventorySource = c.InventorySource,
-                    InventoryExternalId = c.InventoryExternalId,
-                    InventoryQuantity = c.InventoryQuantity,
-                    InventoryStatus = c.InventoryStatus,
-                    InventoryLastSyncAt = c.InventoryLastSyncAt
+
                 }
             ).ToListAsync();
 
@@ -277,6 +275,7 @@ namespace Agriloco.Api.Controllers
         // GET: /api/Crops/byFarm/{farmId}
         // ✅ This is the endpoint your portal relies on.
         // ============================================================
+        [FarmMapWrite(IncludeReads = true)]
         [HttpGet("byFarm/{farmId}")]
         public async Task<ActionResult<List<CropSearchOut>>> GetCropsByFarm(int farmId)
         {
@@ -317,6 +316,7 @@ namespace Agriloco.Api.Controllers
         // PUT: /api/Crops/{id}/availability
         // Triggers email queue when flipping into Available
         // ============================================================
+        [FarmMapWrite("id", Resource = "crop")]
         [HttpPut("{id}/availability")]
         public async Task<IActionResult> UpdateAvailability(int id, [FromBody] CropAvailabilityUpdateIn input)
         {
@@ -359,6 +359,7 @@ namespace Agriloco.Api.Controllers
         // ============================================================
         // PUT: /api/Crops/{id}/details
         // ============================================================
+        [FarmMapWrite("id", Resource = "crop")]
         [HttpPut("{id}/details")]
         public async Task<IActionResult> UpdateDetails(int id, [FromBody] CropDetailsUpdateIn input)
         {
@@ -489,13 +490,9 @@ namespace Agriloco.Api.Controllers
                 OfferingTypes = crop.OfferingTypes,
                 YearPlanted = crop.YearPlanted,
                 Rootstock = crop.Rootstock,
-                Notes = crop.Notes,
+
                 AvailabilityNote = crop.AvailabilityNote,
-                InventorySource = crop.InventorySource,
-                InventoryExternalId = crop.InventoryExternalId,
-                InventoryQuantity = crop.InventoryQuantity,
-                InventoryStatus = crop.InventoryStatus,
-                InventoryLastSyncAt = crop.InventoryLastSyncAt
+
             };
         }
     }

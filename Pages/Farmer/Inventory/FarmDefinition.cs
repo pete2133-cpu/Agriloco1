@@ -16,6 +16,9 @@ namespace Agriloco1.Models.Inventory
 
         public string DefinitionType { get; set; } = "";
 
+        [System.ComponentModel.DataAnnotations.Schema.NotMapped]
+        public bool IsPathway => string.Equals(DefinitionType, "Pathway", StringComparison.OrdinalIgnoreCase);
+
         public string Status { get; set; } = "Unavailable";
 
         public string PresentationMode { get; set; } = "Index";

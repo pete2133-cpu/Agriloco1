@@ -15,7 +15,8 @@
       "launchBrowser": true,
       "launchUrl": "Search/Crops",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "Application__PublicBaseUrl": "https://localhost:44389"
       }
     }
   },

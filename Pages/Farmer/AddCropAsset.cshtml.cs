@@ -74,7 +74,7 @@ namespace Agriloco.Api.Pages.Farmer
 
                 // IMPORTANT:
                 // This assumes your Crops create DTO supports these fields.
-                // If your DTO differs, paste it and I’ll match it exactly.
+                // If your DTO differs, paste it and Iâ€™ll match it exactly.
                 var payload = new CropCreateIn
                 {
                     FarmId = Input.FarmId!.Value,
@@ -115,9 +115,9 @@ namespace Agriloco.Api.Pages.Farmer
                     return Page();
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                Message = "Error creating crop asset: " + ex.Message;
+                Message = "Crop creation could not be completed. Please try again later.";
 
                 if (!string.IsNullOrWhiteSpace(Input.Category))
                     await LoadVarietiesAsync(Input.Category);

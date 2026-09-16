@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#135c3c">
+  <title>Agriloco · Farm Map Viewer</title>
+  <link rel="stylesheet" href="/viewer/viewer.css?v=10">
+  <script src="/viewer/viewer.js?v=13" defer></script>
+</head>
+<body>
+  <svg class="symbols" aria-hidden="true"><defs>
+    <symbol id="i-map" viewBox="0 0 24 24"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2Zm6-2v16m6-14v16"/></symbol>
+    <symbol id="i-market" viewBox="0 0 24 24"><path d="M4 10v11h16V10M3 4h18l1 6c-2 3-4 1-5 0-2 3-4 1-5 0-2 3-4 1-5 0-1 1-3 3-5 0ZM9 21v-7h6v7"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24"><path d="M3 5h18v14H3Z M3 5l9 7 9-7"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M19 10c0 6-7 12-7 12S5 16 5 10a7 7 0 1 1 14 0Z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+    <symbol id="i-location" viewBox="0 0 24 24"><path d="m21 3-7 18-3-8-8-3Z"/></symbol>
+    <symbol id="i-fit" viewBox="0 0 24 24"><path d="M3 9V3h6m6 0h6v6m0 6v6h-6m-6 0H3v-6"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  </defs></svg>
+  <header class="brand-header">
+    <a class="brand" href="/" aria-label="Agriloco home">
+      <svg class="leaf" viewBox="0 0 44 52" aria-hidden="true"><path fill="currentColor" d="M40 2C13 3 0 17 7 33c4 9 14 10 22 2C38 26 39 12 40 2Z"/><path d="M7 50C9 35 18 25 30 14" fill="none" stroke="#135c3c" stroke-width="3" stroke-linecap="round"/><path d="M10 35c4-8 10-14 20-21" fill="none" stroke="white" stroke-width="1.5"/></svg>
+      <span><strong>Agriloco</strong><small>Farm Map Viewer</small></span>
+    </a>
+    <button id="menu" class="icon-button menu" aria-label="Close map filters" aria-controls="filters" aria-expanded="true"><span></span><span></span><span></span></button>
+  </header>
+  <main id="viewer" class="panel-open">
+    <div id="map" tabindex="0" role="region" aria-label="Farm map. Drag to pan; pinch or use plus and minus to zoom.">
+      <div id="surface"><img id="basemap" alt="" draggable="false"><svg id="geometry" aria-label="Published farm features"></svg></div>
+    </div>
+    <section id="filters" class="filter-panel open" aria-label="Map filters">
+      <div class="panel-grip" aria-hidden="true"></div>
+      <div class="modes" role="group" aria-label="Map mode">
+        <button data-mode="farm" aria-pressed="true"><svg><use href="#i-map"/></svg>Farm Map</button>
+        <button data-mode="market" aria-pressed="false"><svg><use href="#i-market"/></svg>Market</button>
+        <button id="notify-open" aria-haspopup="dialog" aria-expanded="false"><svg><use href="#i-mail"/></svg>Notify Me</button>
+      </div>
+      <div class="selects"><label>Crop<select id="crop" aria-label="Crop"><option value="">All crops</option></select></label><label>Variety<select id="variety" aria-label="Variety" disabled><option value="">All varieties</option></select></label></div>
+      <div class="availability-controls">
+        <label class="availability"><input id="available" type="checkbox"><span class="switch" aria-hidden="true"></span>Today's Availability</label>
+        <button id="close-panel" class="panel-close" aria-label="Collapse map filters"><svg><use href="#i-chevron"/></svg></button>
+      </div>
+      <div class="legend panel-legend" aria-label="Availability legend"><span><i class="available"></i>Available</span><span><i class="soon"></i>Coming Soon</span><span><i class="unavailable"></i>Unavailable</span></div>
+    </section>
+    <section id="market-view" hidden aria-labelledby="market-title">
+      <h1 id="market-title">Farm Market</h1>
+      <div id="market-categories" role="group" aria-label="Market categories"></div>
+      <p id="market-message" role="status"></p>
+      <button id="market-retry" hidden type="button">Try again</button>
+      <div id="market-items"></div>
+    </section>
+    <button id="panel-handle" class="panel-handle" aria-controls="filters" aria-expanded="true"><span>Filters</span><svg><use href="#i-chevron"/></svg></button>
+    <div class="map-controls" aria-label="Map controls">
+      <button id="locate" class="icon-button" aria-label="Find my location" title="Find my location"><svg><use href="#i-location"/></svg></button>
+      <div class="zoom-buttons"><button id="zoom-in" aria-label="Zoom in">+</button><button id="zoom-out" aria-label="Zoom out">−</button></div>
+      <button id="fit" class="icon-button" aria-label="Recenter and show whole farm" title="Show whole farm"><svg><use href="#i-fit"/></svg></button>
+      <button id="stop-location" class="icon-button" hidden aria-label="Stop location tracking" title="Stop location tracking">&times;</button>
+    </div>
+    <div id="notice" class="notice" role="status" aria-live="polite"><span id="notice-text">Loading your farm…</span><button id="retry" hidden>Try again</button></div>
+    <div id="location-card" class="gps-error" hidden><span id="location-text" role="status"></span><button id="dismiss-location-error" aria-label="Dismiss location error">&times;</button></div>
+    <section id="feature-card" class="feature-card" hidden aria-label="Selected map feature"><button id="close-feature" aria-label="Close feature">×</button><img id="feature-image" alt="" hidden decoding="async"><span class="eyebrow" id="feature-status"></span><h2 id="feature-name"></h2><p id="feature-path"></p></section>
+    <dialog id="notify-dialog" aria-labelledby="notify-title">
+      <form id="notify-form" novalidate>
+        <button type="button" id="notify-close" aria-label="Close signup">&times;</button>
+        <h2 id="notify-title">Get Notified</h2>
+        <p>Enter your email to receive an update when the following varieties are Coming Soon or Available:</p>
+        <div class="notify-selection"><strong id="notify-selection-title"></strong><ul id="notify-varieties"></ul></div>
+        <label class="notify-email-label" for="notify-email">Your email address</label>
+        <input id="notify-email" name="email" type="email" autocomplete="email" placeholder="Your email address" maxlength="320" required>
+        <p id="notify-error" role="alert" hidden></p>
+        <button id="notify-submit" type="submit">Notify Me</button>
+        <small>We'll only email you when availability changes.<br>You can unsubscribe at any time.</small>
+      </form>
+    </dialog>
+    <div id="notify-success" role="status" hidden><span aria-hidden="true">&#10003;</span><div><strong>You're signed up!</strong><p>We'll email you when availability changes.</p></div></div>
+    <footer class="legend" aria-label="Availability legend"><span><i class="available"></i>Available</span><span><i class="soon"></i>Coming Soon</span><span><i class="unavailable"></i>Unavailable</span></footer>
+  </main>
+</body>
+</html>

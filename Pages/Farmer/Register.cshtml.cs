@@ -82,9 +82,9 @@ namespace Agriloco.Api.Pages.Farmer
                     return Page();
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                Message = $"Error creating account: {ex.Message}";
+                Message = "Account creation could not be completed. Please try again later.";
                 return Page();
             }
         }

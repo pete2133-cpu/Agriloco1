@@ -1,4 +1,5 @@
-﻿using System;
+using Agriloco.Api.Security;
+using System;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
@@ -25,6 +26,7 @@ namespace agriloco.api.Controllers
         }
 
         // POST api/farms/{id}/geocode-address
+        [FarmMapWrite("id")]
         [HttpPost("{id:int}/geocode-address")]
         public async Task<IActionResult> GeocodeAddress(int id)
         {

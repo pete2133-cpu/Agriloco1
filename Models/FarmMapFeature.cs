@@ -45,6 +45,9 @@ namespace Agriloco.Api.Models
         public string LabelTextColour { get; set; }
             = "White";
 
+        // Versioned presentation metadata only; null retains legacy compatibility.
+        public string? LabelLayoutJson { get; set; }
+
         public FarmMap? FarmMap { get; set; }
 
         public List<FarmMapFeaturePoint> Points { get; set; }

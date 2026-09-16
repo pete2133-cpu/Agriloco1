@@ -1,4 +1,4 @@
-﻿using System.Net.Http;
+using System.Net.Http;
 using System.Net.Http.Json;
 using Agriloco.Api.Dtos;
 using Microsoft.AspNetCore.Mvc;
@@ -73,12 +73,7 @@ namespace agriloco.api.Pages.Farmer
 
         private HttpClient CreateSiteClient()
         {
-            var client = _httpClientFactory.CreateClient();
-
-            // BaseAddress is required for relative URLs like "api/Crops/public"
-            // This resolves correctly to http://localhost:5227/ (or whatever host you are running)
-            var baseUrl = $"{Request.Scheme}://{Request.Host}/";
-            client.BaseAddress = new Uri(baseUrl);
+            var client = _httpClientFactory.CreateClient("AgrilocoApiClient");
 
             return client;
         }

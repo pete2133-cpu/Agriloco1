@@ -1,10 +1,12 @@
-﻿using System.Net.Http.Json;
+using Agriloco.Api.Security;
+using System.Net.Http.Json;
 using Agriloco.Api.Dtos;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace Agriloco.Api.Pages.Admin
 {
+    [DevelopmentOnly]
     public class CropCatalogModel : PageModel
     {
         private readonly IHttpClientFactory _httpClientFactory;

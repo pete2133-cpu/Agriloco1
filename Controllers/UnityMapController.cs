@@ -1,4 +1,7 @@
-﻿using System;
+using Agriloco.Api.Security;
+using Agriloco.Api.Services;
+using System.Security.Claims;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -14,11 +17,13 @@ namespace Agriloco.Api.Controllers
     public class UnityMapController : ControllerBase
     {
         private readonly AgrilocoContext _context;
+        private readonly DefinitionImages _definitionImages;
 
         public UnityMapController(
-            AgrilocoContext context)
+            AgrilocoContext context, DefinitionImages? definitionImages = null)
         {
             _context = context;
+            _definitionImages = definitionImages ?? new DefinitionImages(context);
         }
 
         // ============================================================
@@ -37,6 +42,71 @@ namespace Agriloco.Api.Controllers
         // - Availability channels
         //
         // ============================================================
+
+        // On-farm sales use the existing FarmStore channel, not external FarmersMarket.
+        [HttpGet("market")]
+        public async Task<IActionResult> GetMarket([FromQuery] int farmId)
+        {
+            if (!await _context.Farms.AsNoTracking().AnyAsync(f => f.Id == farmId && f.IsActive))
+                return NotFound();
+            var visible = await PublicDefinitionIdsAsync(farmId);
+            var definitions = await _context.FarmDefinitions.AsNoTracking()
+                .Where(d => d.FarmId == farmId && visible.Contains(d.Id))
+                .OrderBy(d => d.SortOrder).ThenBy(d => d.DisplayName).ToListAsync();
+            var assigned = await _context.FarmDefinitionChannels.AsNoTracking()
+                .Where(l => l.IsEnabled && visible.Contains(l.FarmDefinitionId))
+                .Join(_context.AvailabilityChannels.Where(c => c.IsActive && c.Code == "FarmStore"),
+                    l => l.AvailabilityChannelId, c => c.Id, (l, c) => l.FarmDefinitionId)
+                .Distinct().ToListAsync();
+            var byId = definitions.ToDictionary(d => d.Id);
+            var definitionIds = definitions.Where(d => d.DefinitionId.HasValue).Select(d => d.DefinitionId!.Value).ToList();
+            var descriptions = await _context.Definitions.AsNoTracking()
+                .Where(d => d.IsActive && definitionIds.Contains(d.Id))
+                .ToDictionaryAsync(d => d.Id, d => d.Description);
+            var details = await _context.MarketDetails.AsNoTracking().Where(d => assigned.Contains(d.FarmDefinitionId))
+                .Select(d => new { d.FarmDefinitionId, d.DisplayName, d.Description, d.Category, hasImage = d.Image != null })
+                .ToDictionaryAsync(d => d.FarmDefinitionId);
+            // Explicit customer-safe projection: no SKU, barcode, tracking or stock metadata.
+            var options = await _context.MarketSellingOptions.AsNoTracking()
+                .Where(o => assigned.Contains(o.FarmDefinitionId) && o.IsPublic)
+                .OrderBy(o => o.SortOrder).ThenBy(o => o.Id)
+                .Select(o => new { o.FarmDefinitionId, id = o.Id, name = o.Name, price = o.Price,
+                    currency = o.Currency, sellQuantity = o.SellQuantity, sellUnit = o.SellUnit, packageType = o.PackageType }).ToListAsync();
+            var result = definitions.Where(d => assigned.Contains(d.Id)).Select(d =>
+            {
+                var root = d;
+                while (root.ParentFarmDefinitionId.HasValue && byId.TryGetValue(root.ParentFarmDefinitionId.Value, out var parent))
+                    root = parent;
+                details.TryGetValue(d.Id, out var detail);
+                return new { id = d.Id, name = detail?.DisplayName ?? d.DisplayName, status = d.Status,
+                    categoryId = root.Id,
+                    categoryKey = detail?.Category == null ? "crop:" + root.Id : "category:" + detail.Category.ToUpperInvariant(),
+                    categoryName = detail?.Category ?? root.DisplayName,
+                    description = detail?.Description ?? (d.DefinitionId.HasValue && descriptions.TryGetValue(d.DefinitionId.Value, out var description)
+                        ? description : null),
+                    imageUrl = detail?.hasImage == true ? $"/api/UnityMap/market-image?farmId={farmId}&itemId={d.Id}" : null,
+                    sellingOptions = options.Where(o => o.FarmDefinitionId == d.Id).Select(o => new {
+                        o.id, o.name, o.price, o.currency, o.sellQuantity, o.sellUnit, o.packageType }),
+                    subtitle = d.ParentFarmDefinitionId.HasValue && byId.TryGetValue(d.ParentFarmDefinitionId.Value, out var p)
+                        ? p.DisplayName : null };
+            });
+            return Ok(new { farmId, items = result });
+        }
+
+        [HttpGet("market-image")]
+        public async Task<IActionResult> GetMarketImage([FromQuery] int farmId, [FromQuery] int itemId)
+        {
+            Response.Headers.CacheControl = "no-store";
+            Response.Headers["X-Content-Type-Options"] = "nosniff";
+            if (!await _context.Farms.AnyAsync(f => f.Id == farmId && f.IsActive) ||
+                !(await PublicDefinitionIdsAsync(farmId)).Contains(itemId)) return NotFound();
+            var assigned = await _context.FarmDefinitionChannels.AnyAsync(l => l.FarmDefinitionId == itemId && l.IsEnabled &&
+                _context.AvailabilityChannels.Any(c => c.Id == l.AvailabilityChannelId && c.IsActive && c.Code == "FarmStore"));
+            if (!assigned) return NotFound();
+            var image = await _context.MarketDetails.AsNoTracking().Where(d => d.FarmDefinitionId == itemId)
+                .Select(d => new { d.Image, d.ImageContentType }).FirstOrDefaultAsync();
+            return image?.Image == null ? NotFound() : File(image.Image, image.ImageContentType!);
+        }
 
         [HttpGet("farm")]
         public async Task<IActionResult> GetUnityFarm(
@@ -108,6 +178,12 @@ namespace Agriloco.Api.Controllers
                     })
                     .ToListAsync();
 
+            if (!await CanManageFarmAsync(farmId))
+            {
+                var publicIds = await PublicDefinitionIdsAsync(farmId);
+                definitions = definitions.Where(d => publicIds.Contains(d.id)).ToList();
+            }
+
             var definitionIds =
                 definitions
                     .Select(x => x.id)
@@ -149,6 +225,7 @@ namespace Agriloco.Api.Controllers
                     .ThenBy(x => x.channelName)
                     .ToListAsync();
 
+            var imageSources = await _definitionImages.ResolveAsync(farmId, publicOnly: true);
             var unityItems =
                 definitions
                     .Select(definition => new
@@ -179,6 +256,9 @@ namespace Agriloco.Api.Controllers
 
                         sortOrder =
                             definition.sortOrder,
+
+                        imageUrl = imageSources.TryGetValue(definition.id, out var sourceId)
+                            ? DefinitionImages.Url(farmId, sourceId, true) : null,
 
                         channels =
                             channelLinks
@@ -234,6 +314,7 @@ namespace Agriloco.Api.Controllers
         //
         // ============================================================
 
+        [FarmMapWrite(IncludeReads = true, AllowEditorToken = true)]
         [HttpGet("draft")]
         public async Task<IActionResult> GetDraft(
             [FromQuery] int farmId)
@@ -254,6 +335,7 @@ namespace Agriloco.Api.Controllers
         //
         // ============================================================
 
+        [FarmMapWrite("request.FarmId", AllowEditorToken = true)]
         [HttpPost("draft")]
         public async Task<IActionResult> SaveDraft(
             [FromBody] SaveMapRequest request)
@@ -267,6 +349,11 @@ namespace Agriloco.Api.Controllers
                         "A valid FarmId is required."
                 });
             }
+
+            var referenceIds = (request.Features ?? new()).SelectMany(f => new[] { f.FarmDefinitionId, f.LabelSourceFarmDefinitionId })
+                .Where(id => id > 0).Distinct().ToArray();
+            if (await _context.FarmDefinitions.CountAsync(d => d.FarmId == request.FarmId && referenceIds.Contains(d.Id)) != referenceIds.Length)
+                return StatusCode(403);
 
             bool farmExists =
                 await _context.Farms
@@ -286,6 +373,11 @@ namespace Agriloco.Api.Controllers
                 });
             }
 
+            return await ExecuteMapWriteAsync(() => SaveDraftTransactionAsync(request));
+        }
+
+        private async Task<IActionResult> SaveDraftTransactionAsync(SaveMapRequest request)
+        {
             await using var transaction =
                 await _context.Database
                     .BeginTransactionAsync();
@@ -388,8 +480,10 @@ namespace Agriloco.Api.Controllers
             }
             catch
             {
-                await transaction
-                    .RollbackAsync();
+                // A broken connection may also fail rollback. Preserve the original
+                // transient exception so the execution strategy can replay the unit.
+                try { await transaction.RollbackAsync(); }
+                catch { }
 
                 throw;
             }
@@ -409,6 +503,7 @@ namespace Agriloco.Api.Controllers
         //
         // ============================================================
 
+        [FarmMapWrite("farmId", AllowEditorToken = true)]
         [HttpPost("publish")]
         public async Task<IActionResult> PublishMap(
             [FromQuery] int farmId)
@@ -421,6 +516,15 @@ namespace Agriloco.Api.Controllers
                         "A valid FarmId is required."
                 });
             }
+
+            return await ExecuteMapWriteAsync(() => PublishMapTransactionAsync(farmId));
+        }
+
+        private async Task<IActionResult> PublishMapTransactionAsync(int farmId)
+        {
+            await using var transaction =
+                await _context.Database
+                    .BeginTransactionAsync();
 
             var draft =
                 await _context.FarmMaps
@@ -462,9 +566,7 @@ namespace Agriloco.Api.Controllers
                         x.PointOrder)
                     .ToListAsync();
 
-            await using var transaction =
-                await _context.Database
-                    .BeginTransactionAsync();
+
 
             try
             {
@@ -558,6 +660,8 @@ namespace Agriloco.Api.Controllers
                             CustomLabel =
                                 sourceFeature.CustomLabel,
 
+                            LabelLayoutJson = sourceFeature.LabelLayoutJson,
+
                             LabelPosition =
                                 sourceFeature
                                     .LabelPosition,
@@ -637,8 +741,10 @@ namespace Agriloco.Api.Controllers
             }
             catch
             {
-                await transaction
-                    .RollbackAsync();
+                // A broken connection may also fail rollback. Preserve the original
+                // transient exception so the execution strategy can replay the unit.
+                try { await transaction.RollbackAsync(); }
+                catch { }
 
                 throw;
             }
@@ -737,6 +843,9 @@ namespace Agriloco.Api.Controllers
             int farmId,
             string status)
         {
+            if (!await _context.Farms.AsNoTracking().AnyAsync(f => f.Id == farmId && f.IsActive))
+                return NotFound();
+
             var map =
                 await _context.FarmMaps
                     .AsNoTracking()
@@ -793,6 +902,14 @@ namespace Agriloco.Api.Controllers
             // --------------------------------------------------------
             // CURRENT LIVE STATUS
             // --------------------------------------------------------
+
+            if (status == "Published" && !await CanManageFarmAsync(farmId))
+            {
+                var publicIds = await PublicDefinitionIdsAsync(farmId);
+                features = features.Where(f =>
+                    (f.FarmDefinitionId <= 0 || publicIds.Contains(f.FarmDefinitionId)) &&
+                    (f.LabelSourceFarmDefinitionId <= 0 || publicIds.Contains(f.LabelSourceFarmDefinitionId))).ToList();
+            }
 
             var farmDefinitionIds =
                 features
@@ -880,6 +997,8 @@ namespace Agriloco.Api.Controllers
 
                             customLabel =
                                 feature.CustomLabel,
+
+                            labelLayoutJson = feature.LabelLayoutJson,
 
                             labelPosition =
                                 feature.LabelPosition,
@@ -997,6 +1116,45 @@ namespace Agriloco.Api.Controllers
         // BUILD FEATURE FROM UNITY REQUEST
         // ============================================================
 
+        private Task<IActionResult> ExecuteMapWriteAsync(Func<Task<IActionResult>> operation)
+        {
+            // Azure SQL enables retries. The entire explicit transaction must run
+            // inside its execution strategy, not as independently retried commands.
+            return _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+            {
+                // A previous attempt may have assigned identities or accepted deletes
+                // before its transaction rolled back. Reload a clean graph on replay.
+                _context.ChangeTracker.Clear();
+                return await operation();
+            });
+        }
+
+        private async Task<bool> CanManageFarmAsync(int farmId)
+        {
+            return int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var memberId) &&
+                await _context.Members.AsNoTracking().AnyAsync(m => m.Id == memberId && m.IsActive &&
+                    m.FarmId == farmId && m.Farm != null && m.Farm.IsActive);
+        }
+
+        private async Task<HashSet<int>> PublicDefinitionIdsAsync(int farmId)
+        {
+            var rows = await _context.FarmDefinitions.AsNoTracking().Where(d => d.FarmId == farmId)
+                .Select(d => new { d.Id, d.ParentFarmDefinitionId, d.IsPublic, d.IsActive }).ToListAsync();
+            var byId = rows.ToDictionary(d => d.Id);
+            bool Visible(int id)
+            {
+                var seen = new HashSet<int>();
+                while (byId.TryGetValue(id, out var row) && seen.Add(id))
+                {
+                    if (!row.IsActive || !row.IsPublic) return false;
+                    if (!row.ParentFarmDefinitionId.HasValue) return true;
+                    id = row.ParentFarmDefinitionId.Value;
+                }
+                return false;
+            }
+            return rows.Where(d => Visible(d.Id)).Select(d => d.Id).ToHashSet();
+        }
+
         private static FarmMapFeature BuildFeature(
             int farmMapId,
             SaveMapFeatureRequest request)
@@ -1038,6 +1196,8 @@ namespace Agriloco.Api.Controllers
 
                     CustomLabel =
                         request.CustomLabel ?? "",
+
+                    LabelLayoutJson = request.LabelLayoutJson,
 
                     LabelPosition =
                         request.LabelPosition ??
@@ -1155,6 +1315,9 @@ namespace Agriloco.Api.Controllers
 
         public string CustomLabel { get; set; }
             = "";
+
+        [System.ComponentModel.DataAnnotations.MaxLength(4096)]
+        public string? LabelLayoutJson { get; set; }
 
         public string LabelPosition { get; set; }
             = "Center";

@@ -1,3 +1,6 @@
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Agriloco.Api.Security;
+using System.Threading.RateLimiting;
 using Agriloco.Api.Data;
 using Agriloco.Api.Services;
 using Microsoft.EntityFrameworkCore;
@@ -6,7 +9,42 @@ using Microsoft.OpenApi.Models;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
-builder.Services.AddRazorPages();
+builder.Services.AddRazorPages(options => options.Conventions.AddFolderApplicationModelConvention("/Farmer", model =>
+{
+    if (model.ViewEnginePath is not "/Farmer/Login" and not "/Farmer/Register" and not "/Farmer/Logout")
+        model.Filters.Add(new FarmMapWriteAttribute { IncludeReads = true });
+}));
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddTransient<MemberApiHandler>();
+builder.Services.AddScoped<UnityEditorTokens>();
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie(options =>
+{
+    options.Cookie.Name = "__Host-Agriloco.Member";
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.Cookie.SameSite = SameSiteMode.Strict;
+    options.ExpireTimeSpan = TimeSpan.FromHours(8);
+    options.SlidingExpiration = false;
+    options.LoginPath = "/Farmer/Login";
+    options.Events.OnRedirectToLogin = context =>
+    {
+        if (context.Request.Path.StartsWithSegments("/api")) context.Response.StatusCode = 401;
+        else context.Response.Redirect(context.RedirectUri);
+        return Task.CompletedTask;
+    };
+    options.Events.OnRedirectToAccessDenied = context => { context.Response.StatusCode = 403; return Task.CompletedTask; };
+});
+builder.Services.AddAuthorization();
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = 429;
+    options.AddPolicy("member-login", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+    options.AddPolicy("availability-signup", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+});
 
 var provider = builder.Configuration["Database:Provider"]
     ?? (builder.Environment.IsDevelopment() ? "Sqlite" : "SqlServer");
@@ -38,11 +76,15 @@ if (!Uri.TryCreate(publicUrl, UriKind.Absolute, out var publicBaseUri) ||
 builder.Services.AddHttpClient("AgrilocoApiClient", client =>
 {
     client.BaseAddress = new Uri(publicBaseUri.GetLeftPart(UriPartial.Authority) + "/");
-});
+}).AddHttpMessageHandler<MemberApiHandler>()
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { UseCookies = false, AllowAutoRedirect = false });
 builder.Services.AddHttpsRedirection(options => options.HttpsPort = 443);
 
 builder.Services.AddSingleton<IFarmAvailabilityAlertQueue, FarmAvailabilityAlertQueue>();
 builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
+builder.Services.AddScoped<DefinitionImages>();
+builder.Services.AddSingleton<DefinitionThumbnails>();
+builder.Services.AddScoped<AvailabilityUnsubscribeLinks>();
 builder.Services.AddHostedService<FarmAvailabilityAlertWorker>();
 
 builder.Services.AddEndpointsApiExplorer();
@@ -71,6 +113,11 @@ if (app.Environment.IsDevelopment())
 
 if (!app.Environment.IsDevelopment())
 {
+    app.UseExceptionHandler(error => error.Run(async context =>
+    {
+        context.Response.StatusCode = 500;
+        await context.Response.WriteAsJsonAsync(new { error = "An unexpected error occurred." });
+    }));
     app.UseHsts();
     app.UseHttpsRedirection();
 }
@@ -78,7 +125,9 @@ if (!app.Environment.IsDevelopment())
 app.UseDefaultFiles();
 app.UseStaticFiles(UnityWebGlStaticFiles.CreateOptions());
 app.UseRouting();
+app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 
 using (var scope = app.Services.CreateScope())
 {
@@ -89,6 +138,7 @@ using (var scope = app.Services.CreateScope())
     {
     db.Database.EnsureCreated();
     Agriloco1.Services.ProductionSourceSchema.EnsureCreated(db);
+    Agriloco1.Services.MarketSchema.EnsureCreated(db);
 
     try
     {
@@ -860,6 +910,9 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.MapControllers();
+// Keep existing search bookmarks while generating new links to the canonical homepage.
+app.MapMethods("/Search/Crops", new[] { "GET", "HEAD" }, (HttpRequest request) =>
+    Results.LocalRedirect($"{request.PathBase}/{request.QueryString}", permanent: true));
 app.MapRazorPages();
 
 app.Run();

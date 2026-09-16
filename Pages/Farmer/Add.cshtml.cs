@@ -1,3 +1,4 @@
+using Agriloco.Api.Security;
 using Agriloco.Api.Data;
 using Agriloco1.Models.Inventory;
 using Microsoft.AspNetCore.Mvc;
@@ -6,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Agriloco1.Pages.Farmer
 {
+    [FarmMapWrite]
     public class AddModel : PageModel
     {
         private readonly AgrilocoContext _db;
@@ -43,6 +45,7 @@ namespace Agriloco1.Pages.Farmer
             "Product",
             "Variety",
             "Location",
+            "Pathway",
             "Production Unit",
             "Process",
             "Package",
@@ -169,7 +172,7 @@ namespace Agriloco1.Pages.Farmer
                         ? "Other"
                         : NewItem.DefinitionType.Trim(),
 
-                Status = "Unavailable",
+                Status = string.Equals(NewItem.DefinitionType?.Trim(), "Pathway", StringComparison.OrdinalIgnoreCase) ? "" : "Unavailable",
 
                 PresentationMode = "Index",
 
@@ -308,10 +311,14 @@ namespace Agriloco1.Pages.Farmer
 
             item.DisplayName = newName;
 
+            bool wasPathway = item.IsPathway;
             item.DefinitionType =
                 string.IsNullOrWhiteSpace(EditItem.DefinitionType)
                     ? "Other"
                     : EditItem.DefinitionType.Trim();
+
+            if (item.IsPathway) item.Status = "";
+            else if (wasPathway) item.Status = "Unavailable";
 
             item.ParentFarmDefinitionId =
                 EditItem.ParentFarmDefinitionId;

@@ -1,4 +1,5 @@
-﻿using System;
+using Agriloco.Api.Security;
+using System;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -150,6 +151,7 @@ namespace Agriloco.Api.Controllers
         }
 
         // POST: /api/Farms/{id}/map-layout
+        [FarmMapWrite("id")]
         [HttpPost("{id}/map-layout")]
         [Consumes("application/json")]
         public async Task<IActionResult> SaveMapLayout(int id, [FromBody] JsonElement body)

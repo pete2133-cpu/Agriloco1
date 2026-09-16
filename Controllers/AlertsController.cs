@@ -1,4 +1,5 @@
-﻿using System;
+using Agriloco.Api.Security;
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Agriloco.Api.Data;
@@ -42,6 +43,9 @@ namespace Agriloco.Api.Controllers
             if (string.IsNullOrWhiteSpace(input.Email)) return BadRequest("Email is required.");
 
             var email = input.Email.Trim().ToLowerInvariant();
+            if (email.Length > 320 || !System.Net.Mail.MailAddress.TryCreate(email, out var address) ||
+                !address.Address.Equals(email, StringComparison.OrdinalIgnoreCase))
+                return BadRequest("A single valid email address is required.");
 
             var farmExists = await _db.Farms.AnyAsync(f => f.Id == input.FarmId && f.IsActive);
             if (!farmExists) return BadRequest("Farm not found or inactive.");
@@ -78,6 +82,7 @@ namespace Agriloco.Api.Controllers
         }
 
         // GET: /api/Alerts/debug/list?farmId=1&cropId=1
+        [DevelopmentOnly]
         [HttpGet("debug/list")]
         public async Task<IActionResult> DebugList([FromQuery] int farmId, [FromQuery] int cropId)
         {
@@ -92,6 +97,7 @@ namespace Agriloco.Api.Controllers
 
         // ✅ NEW: POST /api/Alerts/debug/enqueue?farmId=1&cropId=1
         // This forces an event into the queue without touching crop availability.
+        [DevelopmentOnly]
         [HttpPost("debug/enqueue")]
         public IActionResult DebugEnqueue([FromQuery] int farmId, [FromQuery] int cropId)
         {

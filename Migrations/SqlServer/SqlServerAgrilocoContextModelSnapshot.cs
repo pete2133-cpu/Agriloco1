@@ -367,6 +367,33 @@ namespace Agriloco1.Migrations.SqlServer
                     b.ToTable("FarmDefinitionAvailabilitySubscriptions");
                 });
 
+            modelBuilder.Entity("Agriloco.Api.Models.FarmGeoreference", b =>
+                {
+                    b.Property<int>("FarmId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("MapImageUploadedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("MapImageUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PointsJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("FarmId");
+
+                    b.ToTable("FarmGeoreferences");
+                });
+
             modelBuilder.Entity("Agriloco.Api.Models.FarmMap", b =>
                 {
                     b.Property<int>("Id")
@@ -424,6 +451,9 @@ namespace Agriloco1.Migrations.SqlServer
 
                     b.Property<double>("LabelFontSize")
                         .HasColumnType("float");
+
+                    b.Property<string>("LabelLayoutJson")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("LabelPosition")
                         .IsRequired()
@@ -548,6 +578,103 @@ namespace Agriloco1.Migrations.SqlServer
                     b.HasIndex("FarmId");
 
                     b.ToTable("MapCells");
+                });
+
+            modelBuilder.Entity("Agriloco.Api.Models.MarketDetails", b =>
+                {
+                    b.Property<int>("FarmDefinitionId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Category")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("DisplayName")
+                        .HasMaxLength(160)
+                        .HasColumnType("nvarchar(160)");
+
+                    b.Property<byte[]>("Image")
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<string>("ImageContentType")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.HasKey("FarmDefinitionId");
+
+                    b.ToTable("MarketDetails");
+                });
+
+            modelBuilder.Entity("Agriloco.Api.Models.MarketSellingOption", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Barcode")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("nvarchar(3)");
+
+                    b.Property<int>("FarmDefinitionId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsPublic")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("PackageType")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<decimal?>("Price")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<decimal?>("SellQuantity")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<string>("SellUnit")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<string>("Sku")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("StockQuantityPerSale")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<string>("StockUnit")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<bool>("TrackInventory")
+                        .HasColumnType("bit");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FarmDefinitionId");
+
+                    b.ToTable("MarketSellingOptions");
                 });
 
             modelBuilder.Entity("Agriloco.Api.Models.Member", b =>
@@ -1800,6 +1927,17 @@ namespace Agriloco1.Migrations.SqlServer
                     b.Navigation("Farm");
                 });
 
+            modelBuilder.Entity("Agriloco.Api.Models.FarmGeoreference", b =>
+                {
+                    b.HasOne("Agriloco.Api.Models.Farm", "Farm")
+                        .WithMany()
+                        .HasForeignKey("FarmId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Farm");
+                });
+
             modelBuilder.Entity("Agriloco.Api.Models.FarmMapFeature", b =>
                 {
                     b.HasOne("Agriloco.Api.Models.FarmMap", "FarmMap")
@@ -1850,6 +1988,28 @@ namespace Agriloco1.Migrations.SqlServer
                     b.Navigation("Farm");
                 });
 
+            modelBuilder.Entity("Agriloco.Api.Models.MarketDetails", b =>
+                {
+                    b.HasOne("Agriloco1.Models.Inventory.FarmDefinition", "FarmDefinition")
+                        .WithOne()
+                        .HasForeignKey("Agriloco.Api.Models.MarketDetails", "FarmDefinitionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("FarmDefinition");
+                });
+
+            modelBuilder.Entity("Agriloco.Api.Models.MarketSellingOption", b =>
+                {
+                    b.HasOne("Agriloco.Api.Models.MarketDetails", "MarketDetails")
+                        .WithMany("SellingOptions")
+                        .HasForeignKey("FarmDefinitionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("MarketDetails");
+                });
+
             modelBuilder.Entity("Agriloco.Api.Models.Member", b =>
                 {
                     b.HasOne("Agriloco.Api.Models.Farm", "Farm")
@@ -1869,6 +2029,11 @@ namespace Agriloco1.Migrations.SqlServer
             modelBuilder.Entity("Agriloco.Api.Models.FarmMapFeature", b =>
                 {
                     b.Navigation("Points");
+                });
+
+            modelBuilder.Entity("Agriloco.Api.Models.MarketDetails", b =>
+                {
+                    b.Navigation("SellingOptions");
                 });
 #pragma warning restore 612, 618
         }

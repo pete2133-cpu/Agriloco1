@@ -1,4 +1,5 @@
-﻿using Agriloco.Api.Data;
+using Agriloco.Api.Security;
+using Agriloco.Api.Data;
 using Agriloco.Api.Dtos;
 using Agriloco.Api.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -63,6 +64,7 @@ namespace Agriloco.Api.Controllers
         }
 
         // POST: /api/CropCatalog/category
+        [DevelopmentOnly]
         [HttpPost("category")]
         public async Task<ActionResult> AddCategory([FromBody] CropCatalogCategoryCreateIn input)
         {
@@ -97,6 +99,7 @@ namespace Agriloco.Api.Controllers
         }
 
         // POST: /api/CropCatalog/variety
+        [DevelopmentOnly]
         [HttpPost("variety")]
         public async Task<ActionResult> AddVariety([FromBody] CropCatalogVarietyCreateIn input)
         {

@@ -1,10 +1,12 @@
-﻿using Agriloco.Api.Services;
+using Agriloco.Api.Security;
+using Agriloco.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using System.Threading.Tasks;
 
 namespace Agriloco.Api.Controllers
 {
+    [DevelopmentOnly]
     [ApiController]
     [Route("api/[controller]")]
     public class EmailTestController : ControllerBase
@@ -36,7 +38,8 @@ namespace Agriloco.Api.Controllers
         }
 
         // GET /api/EmailTest/send?to=someone@gmail.com
-        [HttpGet("send")]
+        [HttpPost("send")]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Send([FromQuery] string to)
         {
             await _emailSender.SendAsync(to, "Agriloco test email", "If you got this, SMTP works.");

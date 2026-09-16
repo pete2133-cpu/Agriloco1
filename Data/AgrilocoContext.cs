@@ -13,10 +13,26 @@ namespace Agriloco.Api.Data
 
         protected AgrilocoContext(DbContextOptions options) : base(options) { }
 
+        public DbSet<MarketDetails> MarketDetails => Set<MarketDetails>();
+        public DbSet<MarketSellingOption> MarketSellingOptions => Set<MarketSellingOption>();
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+            modelBuilder.Entity<MarketDetails>().HasOne(d => d.FarmDefinition).WithOne()
+                .HasForeignKey<MarketDetails>(d => d.FarmDefinitionId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<MarketSellingOption>().HasOne(o => o.MarketDetails).WithMany(d => d.SellingOptions)
+                .HasForeignKey(o => o.FarmDefinitionId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<MarketSellingOption>().Property(o => o.Price).HasPrecision(18, 6);
+            modelBuilder.Entity<MarketSellingOption>().Property(o => o.SellQuantity).HasPrecision(18, 6);
+            modelBuilder.Entity<MarketSellingOption>().Property(o => o.StockQuantityPerSale).HasPrecision(18, 6);
+        }
+
         // ============================================================
         // EXISTING FARM / SEARCH / UNITY DATA
         // ============================================================
 
+        public DbSet<FarmGeoreference> FarmGeoreferences => Set<FarmGeoreference>();
         public DbSet<Farm> Farms { get; set; } = null!;
         public DbSet<Crop> Crops { get; set; } = null!;
         public DbSet<MapCell> MapCells { get; set; } = null!;
@@ -158,3 +174,4 @@ namespace Agriloco.Api.Data
             => Set<FarmMapFeaturePoint>();
     }
 }
+

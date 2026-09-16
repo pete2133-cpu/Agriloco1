@@ -1,0 +1,53 @@
+@model Agriloco1.Pages.Farmer.DashboardModel
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Farmer Dashboard · Agriloco</title>
+    <link rel="stylesheet" href="~/css/agriloco.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/farmer-dashboard.css" asp-append-version="true" />
+</head>
+<body class="dashboard-site">
+<a class="skip-link" href="#main-content">Skip to content</a>
+<svg class="dash-symbols" aria-hidden="true"><defs>
+    <symbol id="dash-grid" viewBox="0 0 24 24"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"/></symbol>
+    <symbol id="dash-map" viewBox="0 0 24 24"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2ZM9 3v16m6-14v16"/></symbol>
+    <symbol id="dash-box" viewBox="0 0 24 24"><path d="m3 7 9-4 9 4v11l-9 4-9-4ZM3 7l9 4 9-4m-9 4v11"/></symbol>
+    <symbol id="dash-leaf" viewBox="0 0 24 24"><path d="M20 3C7 2 2 9 6 16c6 5 15-2 14-13ZM3 22 15 9"/></symbol>
+    <symbol id="dash-record" viewBox="0 0 24 24"><path d="M8 5H4v17h16V5h-4M8 3h8v5H8zM8 12h8m-8 5h8"/></symbol>
+</defs></svg>
+<header class="dash-topbar">
+    <a class="dash-brand" asp-page="/Search/Crops"><svg viewBox="0 0 44 52" aria-hidden="true"><path fill="currentColor" d="M40 2C13 3 0 17 7 33c4 9 14 10 22 2C38 26 39 12 40 2Z"/><path d="M7 50C9 35 18 25 30 14" fill="none" stroke="currentColor" stroke-width="3"/><path d="M10 35c4-8 10-14 20-21" fill="none" stroke="white" stroke-width="1.5"/></svg>Agriloco</a>
+    <div class="dash-account"><span><strong>@User.Identity?.Name</strong><small>@Model.FarmName</small></span><a asp-page="/Farmer/Logout">Sign out</a></div>
+    <button type="button" class="dash-menu-toggle" aria-label="Open dashboard navigation" aria-expanded="false" aria-controls="dash-sidebar">☰</button>
+</header>
+<aside id="dash-sidebar" class="dash-sidebar">
+    <nav aria-label="Farmer navigation">
+        <a class="active" aria-current="page" asp-page="/Farmer/Dashboard" asp-route-farmId="@Model.FarmId"><svg><use href="#dash-grid"/></svg>Dashboard</a>
+        <a asp-page="/Farmer/MapImage" asp-route-farmId="@Model.FarmId"><svg><use href="#dash-map"/></svg>Map setup</a>
+        <a asp-page="/Farmer/Add" asp-route-farmId="@Model.FarmId"><svg><use href="#dash-leaf"/></svg>Crops &amp; products</a>
+        <a asp-page="/Farmer/Inventory/HarvestLots" asp-route-farmId="@Model.FarmId"><svg><use href="#dash-leaf"/></svg>Harvest lots</a>
+        <a asp-page="/Farmer/Inventory/Index" asp-route-farmId="@Model.FarmId"><svg><use href="#dash-box"/></svg>Inventory &amp; production</a>
+        <a asp-page="/Farmer/Inventory/ProductionRuns" asp-route-farmId="@Model.FarmId"><svg><use href="#dash-record"/></svg>Batches &amp; processing</a>
+        <a asp-page="/Farmer/Inventory/Suppliers" asp-route-farmId="@Model.FarmId"><svg><use href="#dash-box"/></svg>Suppliers</a>
+        <a asp-page="/Farmer/ManageCropAssets" asp-route-farmId="@Model.FarmId"><svg><use href="#dash-leaf"/></svg>Crop assets</a>
+        <a asp-page="/Farmer/Crops" asp-route-farmId="@Model.FarmId"><svg><use href="#dash-grid"/></svg>Search listings</a>
+        <a asp-page="/Farmer/Inventory/InventoryItems" asp-route-farmId="@Model.FarmId"><svg><use href="#dash-box"/></svg>Stock &amp; packaging</a>
+        <a asp-page="/Search/Crops"><svg><use href="#dash-leaf"/></svg>Find food</a>
+        <a asp-page="/Farmer/Register"><svg><use href="#dash-record"/></svg>List your farm</a>
+    </nav>
+    <a class="dash-mobile-account" asp-page="/Farmer/Logout">Sign out · @User.Identity?.Name</a>
+    <a class="dash-public-map" href="/viewer/?farmId=@Model.FarmId" target="_blank" rel="noopener">View Public Map ↗</a>
+</aside>
+<main id="main-content" class="dash-main" tabindex="-1">@RenderBody()</main>
+<nav class="dash-mobile-nav" aria-label="Mobile farmer navigation">
+    <a aria-current="page" asp-page="/Farmer/Dashboard" asp-route-farmId="@Model.FarmId"><svg><use href="#dash-grid"/></svg>Dashboard</a>
+    <a asp-page="/Farmer/MapImage" asp-route-farmId="@Model.FarmId"><svg><use href="#dash-map"/></svg>Map setup</a>
+    <a asp-page="/Farmer/Inventory/Index" asp-route-farmId="@Model.FarmId"><svg><use href="#dash-box"/></svg>Inventory</a>
+    <button type="button" class="dash-menu-toggle" aria-expanded="false" aria-controls="dash-sidebar"><svg><use href="#dash-grid"/></svg>More</button>
+</nav>
+<script src="~/js/farmer-dashboard.js" asp-append-version="true" defer></script>
+@RenderSection("Scripts", required: false)
+</body>
+</html>

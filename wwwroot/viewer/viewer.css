@@ -1,0 +1,89 @@
+:root{font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#172d22;background:#e9ede7;--green:#135c3c;--shadow:0 5px 24px #102d2326}*{box-sizing:border-box}body{margin:0;height:100vh;height:100dvh;overflow:hidden}button,select,input{font:inherit}button{cursor:pointer;-webkit-tap-highlight-color:transparent;color:inherit}button:focus-visible,select:focus-visible,#map:focus-visible{outline:3px solid #52b17c;outline-offset:3px}button{border:0}button:disabled,select:disabled{opacity:.55;cursor:default}svg{width:25px;height:25px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.symbols{position:absolute;width:0;height:0;overflow:hidden}.brand-header{height:calc(88px + env(safe-area-inset-top));padding:env(safe-area-inset-top) 22px 0;display:flex;align-items:center;justify-content:space-between;background:#fff;position:relative;z-index:20;border-bottom:1px solid #dde4dd}.brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--green)}.brand .leaf{width:38px;height:48px;stroke:none}.brand strong{display:block;font-size:30px;letter-spacing:-1px;line-height:1.05;font-weight:800}.brand small{display:block;color:#28332d;font-size:13px;margin-top:4px}.icon-button{height:48px;width:48px;background:#fff;border-radius:15px;display:grid;place-items:center;box-shadow:var(--shadow)}.menu{box-shadow:none;display:flex;flex-direction:column;justify-content:center;gap:5px;color:var(--green)}.menu span{display:block;width:25px;height:2.5px;background:currentColor;border-radius:2px}#viewer{position:relative;height:calc(100% - 88px - env(safe-area-inset-top));overflow:hidden;isolation:isolate}#map{position:absolute;inset:0;background:#d9e1d1;touch-action:none;overflow:hidden;cursor:grab;outline-offset:-4px}#map:active{cursor:grabbing}#surface{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform;visibility:hidden}#basemap{width:100%;height:100%;display:block;pointer-events:none;user-select:none}#geometry{position:absolute;inset:0;width:100%;height:100%;overflow:visible}.map-feature{cursor:pointer}.map-feature .shape{vector-effect:non-scaling-stroke;stroke-linejoin:round;stroke-linecap:round}.map-label text{stroke:none;fill:white;font-size:13px;font-weight:650;paint-order:stroke;user-select:none}.map-label rect{fill:#152d23e8;stroke:#ffffff80;stroke-width:1}.filter-panel{position:absolute;left:12px;right:12px;top:0;z-index:10;background:#fffffff5;backdrop-filter:blur(18px);border-radius:0 0 22px 22px;padding:12px 16px 20px;box-shadow:var(--shadow);transform:translateY(-110%);visibility:hidden;transition:transform .24s ease,visibility .24s}.filter-panel.open{transform:translateY(0);visibility:visible}.panel-grip{height:4px;width:44px;border-radius:9px;background:#c4cbc5;margin:0 auto 12px}.modes{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.modes button{background:#e9ece8;border:1px solid transparent;border-radius:12px;min-height:67px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;font-size:13px;font-weight:550}.modes button[aria-pressed=true]{background:var(--green);color:white}.selects{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:15px 0}.selects label{font-size:13px;font-weight:650;min-width:0}.selects select{display:block;width:100%;height:46px;margin-top:6px;background:#fff;border:1px solid #d7ddd6;border-radius:11px;padding:0 9px;color:#203228;font-size:14px}.availability{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:550;width:fit-content;cursor:pointer;min-height:32px}.availability input{position:absolute;opacity:0;width:46px;height:29px}.switch{width:44px;height:27px;background:#bcc8bd;border-radius:20px;position:relative;transition:background .15s}.switch:after{content:"";position:absolute;left:3px;top:3px;width:21px;height:21px;border-radius:50%;background:white;box-shadow:0 1px 4px #0002;transition:transform .15s}.availability input:checked+.switch{background:#188346}.availability input:checked+.switch:after{transform:translateX(17px)}.availability input:focus-visible+.switch{outline:3px solid #52b17c;outline-offset:3px}.panel-close{position:absolute;bottom:6px;right:14px;background:transparent;width:44px;height:36px;display:grid;place-items:center}.panel-close svg{transform:rotate(180deg)}.panel-handle{position:absolute;top:0;left:50%;transform:translateX(-50%);z-index:9;display:flex;align-items:center;gap:7px;padding:6px 17px;background:#fff;border-radius:0 0 14px 14px;box-shadow:var(--shadow);font-size:12px;font-weight:650}.panel-handle svg{height:19px;width:19px}.farm-badge{position:absolute;top:54px;left:16px;max-width:calc(100% - 96px);background:#fffffff0;backdrop-filter:blur(10px);border:1px solid #fff8;padding:12px 15px;border-radius:15px;box-shadow:var(--shadow);pointer-events:none;transition:opacity .15s}.eyebrow{font-size:9px;letter-spacing:1.5px;font-weight:750;color:#5c7563}.farm-badge h1{font-size:18px;letter-spacing:-.5px;margin:4px 0;line-height:1.2}.farm-badge p{font-size:11px;color:#607566;margin:4px 0 0}.panel-open .farm-badge{opacity:0}.map-controls{position:absolute;top:54px;right:14px;display:flex;flex-direction:column;gap:10px;z-index:5;transition:top .24s}.panel-open .map-controls{top:285px}.zoom-buttons{border-radius:15px;overflow:hidden;box-shadow:var(--shadow);background:white}.zoom-buttons button{display:block;background:#fff;width:48px;height:46px;font-size:30px;line-height:1}.zoom-buttons button+button{border-top:1px solid #edf0eb}.legend{position:absolute;bottom:calc(14px + env(safe-area-inset-bottom));left:14px;right:14px;display:flex;align-items:center;justify-content:space-around;gap:9px;padding:17px 12px;background:#fffffff5;backdrop-filter:blur(12px);border-radius:18px;box-shadow:var(--shadow);z-index:8}.legend span{display:flex;align-items:center;gap:7px;white-space:nowrap;font-size:11px;font-weight:550}.legend i{display:block;width:16px;height:16px;border-radius:50%;border:1px solid #0001}.available{background:#00B8D9}.soon{background:#FFB000}.unavailable{background:#D81B60}.notice{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:max-content;max-width:calc(100% - 100px);padding:15px 18px;border-radius:14px;background:#fffffff2;box-shadow:var(--shadow);font-size:13px;text-align:center;line-height:1.5;z-index:6}.notice button{background:var(--green);color:white;border-radius:8px;padding:9px 14px;margin:10px auto 0;display:block}.notice button[hidden],[hidden]{display:none!important}.location-card,.feature-card{position:absolute;bottom:calc(88px + env(safe-area-inset-bottom));left:14px;right:14px;padding:15px 18px;background:#fff;border-radius:17px;box-shadow:var(--shadow);z-index:7;font-size:13px}.location-card div{display:flex;align-items:center;gap:9px}.location-card p,.feature-card p{font-size:12px;line-height:1.5;color:#596c60;margin:7px 0 0}.location-card button,.feature-card button{background:transparent;font-size:25px;width:32px;height:32px;margin-left:auto}.feature-card button{float:right}.feature-card h2{margin:5px 0;font-size:20px}.gps-dot{display:inline-block;width:12px;height:12px;border:2px solid white;border-radius:50%;background:#168aff;box-shadow:0 0 0 5px #168aff20}.user-marker{fill:#168aff;stroke:white;stroke-width:3;vector-effect:non-scaling-stroke}.user-accuracy{fill:#168aff26;stroke:#168aff80;vector-effect:non-scaling-stroke}.location-card{z-index:8}@media(min-width:700px){.brand-header{padding-left:30px;padding-right:30px}.filter-panel{width:430px;left:24px;right:auto;border-radius:0 0 22px 22px}.panel-handle{left:239px}.farm-badge{left:24px;top:60px}.map-controls{right:24px;top:24px!important}.panel-open .farm-badge{opacity:1;top:285px}.legend{left:50%;right:auto;transform:translateX(-50%);width:410px}.legend span{font-size:13px}.location-card,.feature-card{left:24px;right:auto;width:360px}.notice{max-width:450px}}@media(max-height:580px){.brand-header{height:64px}.brand strong{font-size:25px}#viewer{height:calc(100% - 64px)}.filter-panel{max-height:calc(100% - 70px);overflow:auto}.modes button{min-height:46px}.modes svg{display:none}.selects{margin:9px 0}.legend{padding:10px}.farm-badge{top:40px}.map-controls,.panel-open .map-controls{top:12px;right:10px}.icon-button{height:40px;width:40px}.zoom-buttons button{height:36px;width:40px}}@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* The mobile legend belongs to the collapsible filters; desktop keeps its footer. */
+.panel-legend{display:none}
+@media(max-width:699px){
+  footer.legend{display:none}
+  .availability-controls{position:relative}
+  .availability-controls .panel-close{bottom:0;right:-4px}
+  .filter-panel .panel-legend{display:flex;position:static;transform:none;width:auto;margin-top:8px;padding:0;flex-wrap:wrap;background:none;backdrop-filter:none;border-radius:0;box-shadow:none}
+}
+
+/* Viewport and touch refinements for the native phone viewer. */
+body{display:flex;flex-direction:column;overscroll-behavior:none}
+.brand-header{flex-shrink:0}
+#viewer{flex:1;min-height:0;height:auto;--panel-height:260px}
+#map{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.filter-panel{max-height:calc(100% - 90px - env(safe-area-inset-bottom));overflow-y:auto;overscroll-behavior:contain}
+.panel-open .map-controls{top:calc(var(--panel-height) + 16px)}
+@media(max-width:699px){
+  .brand-header{height:calc(76px + env(safe-area-inset-top));padding:env(safe-area-inset-top) max(16px,env(safe-area-inset-right)) 0 max(16px,env(safe-area-inset-left))}
+  .brand strong{font-size:29px}.brand small{font-size:12px}.brand .leaf{width:34px;height:43px}
+  #viewer{height:auto}
+  .filter-panel{left:8px;right:8px;padding:10px 14px 16px;border-radius:0 0 22px 22px}
+  .panel-grip{margin-bottom:10px}
+  .modes button{min-height:64px;font-size:14px}.modes svg{display:block;width:24px;height:24px}
+  .selects{gap:10px;margin:13px 0}.selects label{font-size:14px}
+  .selects select{font-size:16px;min-height:50px;padding:0 10px;border-radius:12px}
+  .availability{min-height:44px;font-size:14px}.availability input{height:44px}
+  .panel-close{width:48px;height:44px;bottom:15px;right:10px}
+  .panel-handle{min-height:44px;padding:8px 18px;font-size:13px}
+  .farm-badge{top:56px;left:12px;max-width:calc(100% - 86px);padding:9px 12px;border-radius:12px}
+  .farm-badge .eyebrow{display:none}.farm-badge h1{font-size:15px;margin:0;letter-spacing:-.25px}.farm-badge p{font-size:10px;margin:4px 0 0}
+  .map-controls{top:56px;right:max(12px,env(safe-area-inset-right));gap:10px}
+  .panel-open .map-controls{top:calc(var(--panel-height) + 12px)}
+  .icon-button{height:48px;width:48px}.zoom-buttons button{height:48px;width:48px}
+  .legend{bottom:calc(10px + env(safe-area-inset-bottom));left:max(10px,env(safe-area-inset-left));right:max(10px,env(safe-area-inset-right));padding:16px 10px;gap:6px;border-radius:17px}
+  .legend span{font-size:12px;gap:6px}.legend i{width:16px;height:16px;flex-shrink:0}
+  .location-card,.feature-card{bottom:calc(80px + env(safe-area-inset-bottom))}
+  .location-card button,.feature-card button{width:44px;height:44px}
+}
+@media(max-width:359px){.legend span{font-size:11px;gap:5px}.legend i{width:14px;height:14px}.selects select{padding:0 6px}.brand strong{font-size:27px}}
+@media(pointer:coarse){button{touch-action:manipulation}.icon-button,.zoom-buttons button{min-width:48px;min-height:48px}select{font-size:16px}}@media(max-width:699px) and (max-height:650px){
+  .panel-open .map-controls{flex-direction:row;top:calc(var(--panel-height) + 10px);gap:8px}
+  .panel-open .zoom-buttons{display:flex}
+  .panel-open .zoom-buttons button+button{border-top:0;border-left:1px solid #edf0eb}
+}
+
+/* GPS feedback appears only for errors, never routine tracking status. */
+.gps-error{position:absolute;left:12px;right:12px;bottom:calc(80px + env(safe-area-inset-bottom));z-index:8;display:flex;align-items:center;gap:8px;padding:8px 12px;background:#fff;border-radius:8px;box-shadow:var(--shadow);font-size:12px}.gps-error button{flex-shrink:0;width:36px;height:36px;background:transparent;font-size:22px;margin-left:auto}
+
+/* Public availability signup; the map and its controls retain their existing layout. */
+.modes button[aria-expanded=true]{background:var(--green);color:white}
+#notify-dialog{border:0;border-radius:18px;padding:22px;width:min(360px,calc(100vw - 32px));max-height:calc(100dvh - 32px);box-sizing:border-box;color:#172d22;box-shadow:var(--shadow);overflow-y:auto}
+#notify-dialog::backdrop{background:#10201966}
+#notify-form{display:flex;flex-direction:column;gap:14px}
+#notify-title{font-size:23px;margin:0;padding-right:32px;line-height:1.2}
+#notify-form p{margin:0;font-size:14px;line-height:1.4}
+#notify-close{position:absolute;right:8px;top:8px;width:44px;height:44px;background:transparent;font-size:28px}
+.notify-selection{background:#edf0ef;border-radius:9px;padding:12px;max-height:min(26dvh,210px);overflow-y:auto;font-size:14px;flex-shrink:0}
+#notify-varieties{margin:5px 0 0;padding-left:20px}
+#notify-email{width:100%;box-sizing:border-box;min-height:48px;border:1px solid #ccd8d1;border-radius:9px;padding:10px 12px;font:inherit;font-size:16px}
+.notify-email-label{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+#notify-submit{min-height:48px;background:var(--green);color:white;font-size:16px;font-weight:650;border-radius:9px}
+#notify-form small{text-align:center;font-size:11px;line-height:1.35}
+#notify-error{color:#a32929}
+#notify-success{position:absolute;top:calc(var(--panel-height) + 16px);left:50%;transform:translateX(-50%);z-index:15;display:flex;align-items:center;gap:14px;width:max-content;max-width:calc(100% - 32px);box-sizing:border-box;padding:16px;background:#f4fcf5;border:1px solid #a5cdb0;border-radius:13px;box-shadow:var(--shadow);pointer-events:none}
+#notify-success>span{display:grid;place-items:center;border-radius:50%;width:40px;height:40px;flex-shrink:0;background:#399d4a;color:white;font-size:27px}
+#notify-success p{font-size:12px;margin:5px 0 0}
+@media(max-height:600px){#notify-dialog{padding:16px}#notify-form{gap:8px}.notify-selection{max-height:20dvh}}
+
+/* Market is a separate scrolling list; the map keeps its size and GPS state. */
+#market-view{position:absolute;inset:48px 0 0;overflow-y:auto;overscroll-behavior:contain;background:#fff;padding:24px max(20px,calc((100% - 900px)/2));z-index:6}
+.panel-open #market-view{top:var(--panel-height)}
+#market-title{color:var(--green);font-size:30px;margin:0 0 20px;letter-spacing:-.6px}
+#market-categories{display:flex;gap:8px;overflow-x:auto;padding-bottom:16px}
+#market-categories button,#market-retry{border-radius:12px;background:#e9ece8;padding:11px 16px;white-space:nowrap}
+#market-categories button[aria-pressed=true]{background:var(--green);color:white}
+.market-item{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px 0;border-bottom:1px solid #e1e7e2}
+.market-item>div{min-width:0}.market-item h2{font-size:18px;margin:0;overflow-wrap:anywhere}.market-item p{margin:6px 0 0;color:#596c60;font-size:14px}
+.market-status{display:flex;align-items:center;gap:7px;font-size:13px;flex-shrink:0;max-width:46%;background:#f3f6f3;padding:9px 10px;border-radius:12px}
+.market-status i{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+.market-open #map,.market-open #surface{visibility:hidden!important}
+.market-open .map-controls,.market-open .legend,.market-open #notice,.market-open #feature-card,.market-open #location-card,.market-open .selects,.market-open .availability-controls{display:none!important}
+@media(min-width:700px){.market-open .filter-panel{width:100%;left:0;right:0;border-radius:0}.market-open .modes{max-width:600px;margin:auto}}
+.market-item-image{width:64px;height:64px;object-fit:cover;border-radius:10px;flex-shrink:0}.market-item>div{flex:1}.market-item .market-option{color:#173b2b;font-weight:600}
+@media(max-width:699px){.market-item{gap:10px;flex-wrap:wrap}.market-item>div{flex-basis:calc(100% - 80px)}.market-item .market-status{max-width:100%}}
+/* Compact inherited image inside the existing selected-feature card. */
+#feature-image{float:left;width:56px;height:56px;object-fit:cover;border-radius:8px;margin:0 12px 4px 0}
+.feature-card:has(#feature-image:not([hidden])){display:flow-root}

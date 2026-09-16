@@ -1,3 +1,4 @@
+using Agriloco.Api.Security;
 using Agriloco.Api.Data;
 using Agriloco.Api.Services;
 using Agriloco1.Models.Inventory;
@@ -9,23 +10,28 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Agriloco1.Pages.Farmer
 {
+    [FarmMapWrite]
     public class DashboardModel : PageModel
     {
         private readonly AgrilocoContext _db;
         private readonly IWebHostEnvironment _environment;
         private readonly IEmailSender _emailSender;
         private readonly ILogger<DashboardModel> _logger;
+        private readonly AvailabilityUnsubscribeLinks _unsubscribeLinks;
+        private readonly DefinitionImages _definitionImages;
 
         public DashboardModel(
             AgrilocoContext db,
             IWebHostEnvironment environment,
             IEmailSender emailSender,
-            ILogger<DashboardModel> logger)
+            ILogger<DashboardModel> logger, AvailabilityUnsubscribeLinks unsubscribeLinks, DefinitionImages? definitionImages = null)
         {
             _db = db;
             _environment = environment;
             _emailSender = emailSender;
             _logger = logger;
+            _unsubscribeLinks = unsubscribeLinks;
+            _definitionImages = definitionImages ?? new DefinitionImages(db);
         }
 
         [BindProperty(SupportsGet = true)]
@@ -41,6 +47,7 @@ namespace Agriloco1.Pages.Farmer
         public IFormFile? BasemapUpload { get; set; }
 
         public List<FarmDefinition> FarmDefinitions { get; set; } = new();
+        public Dictionary<int, int> ImageSources { get; private set; } = new();
 
         public List<AvailabilityChannel> AvailabilityChannels { get; set; } = new();
 
@@ -80,17 +87,17 @@ namespace Agriloco1.Pages.Farmer
             if (item != null &&
                 StatusOptions.Contains(status))
             {
-                var previouslyAvailable = definitions.ToDictionary(x => x.Id, x => PublicFoodCatalog.IsAvailable(x.Status));
+                var previouslyAvailable = definitions.ToDictionary(x => x.Id, x => DashboardAvailabilityNotifications.NotificationStatus(x.Status));
                 FarmHierarchyChanges.ApplyStatus(definitions, item, status);
                 await _db.SaveChangesAsync();
-                var newlyAvailable = definitions.Where(x => !previouslyAvailable[x.Id] && PublicFoodCatalog.IsAvailable(x.Status)
-                    && (x.DefinitionType.Equals("Product", StringComparison.OrdinalIgnoreCase)
-                        || x.DefinitionType.Equals("Variety", StringComparison.OrdinalIgnoreCase))).Select(x => x.Id).ToList();
+                var newlyAvailable = definitions.Where(x => DashboardAvailabilityNotifications.NotificationStatus(x.Status) != ""
+                    && previouslyAvailable[x.Id] != DashboardAvailabilityNotifications.NotificationStatus(x.Status)
+                    && AvailabilitySignupCatalog.IsSelection(x, definitions)).Select(x => x.Id).ToList();
                 if (newlyAvailable.Count > 0)
                 {
                     try
                     {
-                        var result = await new DashboardAvailabilityNotifications(_db, _emailSender, _logger).SendAsync(FarmId, newlyAvailable);
+                        var result = await new DashboardAvailabilityNotifications(_db, _emailSender, _logger, _unsubscribeLinks).SendAsync(FarmId, newlyAvailable);
                         TempData["AvailabilityEmailMessage"] = result.Message;
                     }
                     catch (Exception exception)
@@ -123,10 +130,10 @@ namespace Agriloco1.Pages.Farmer
             var selected = definitions.FirstOrDefault(x => x.Id == farmDefinitionId && x.IsActive);
             var channelExists = await _db.AvailabilityChannels
                 .AnyAsync(x => x.Id == availabilityChannelId && x.IsActive);
-            if (selected == null || !channelExists)
+            if (selected == null || selected.IsPathway || !channelExists)
                 return RedirectToPage(new { farmId = FarmId });
 
-            var affectedIds = FarmHierarchyChanges.Branch(definitions, selected, isEnabled).Select(x => x.Id).ToList();
+            var affectedIds = FarmHierarchyChanges.Branch(definitions, selected, isEnabled).Where(x => !x.IsPathway).Select(x => x.Id).ToList();
             var links = await _db.FarmDefinitionChannels
                 .Where(x => affectedIds.Contains(x.FarmDefinitionId) && x.AvailabilityChannelId == availabilityChannelId)
                 .ToListAsync();
@@ -385,6 +392,7 @@ namespace Agriloco1.Pages.Farmer
             FarmDefinitions =
                 OrderHierarchy(
                     rawDefinitions);
+            ImageSources = await _definitionImages.ResolveAsync(FarmId, publicOnly: false);
 
             // ========================================================
             // LOAD AVAILABILITY CHANNELS
@@ -551,3 +559,4 @@ namespace Agriloco1.Pages.Farmer
         }
     }
 }
+

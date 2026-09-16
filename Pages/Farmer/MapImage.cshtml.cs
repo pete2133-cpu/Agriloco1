@@ -1,3 +1,4 @@
+using Agriloco.Api.Security;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -12,6 +13,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace Agriloco.Api.Pages.Farmer
 {
+    [FarmMapWrite]
     public class MapImageModel : PageModel
     {
         private readonly AgrilocoContext _db;

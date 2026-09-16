@@ -1,4 +1,7 @@
-﻿using System;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
+using Agriloco.Api.Security;
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Text;
@@ -67,12 +70,13 @@ namespace Agriloco.Api.Controllers
                 Phone = string.IsNullOrWhiteSpace(input.Phone) ? null : input.Phone.Trim(),
                 Username = input.Username.Trim(),
 
-                PasswordHash = Encoding.UTF8.GetBytes(input.Password),
+
 
                 CreatedAt = DateTime.UtcNow,
                 IsActive = true
             };
 
+            member.PasswordHash = MemberPasswords.Hash(member, input.Password);
             _context.Members.Add(member);
             await _context.SaveChangesAsync();
 
@@ -95,6 +99,7 @@ namespace Agriloco.Api.Controllers
             return CreatedAtAction(nameof(GetMemberById), new { id = member.Id }, output);
         }
 
+        [Authorize]
         [HttpGet("{id:int}")]
         public async Task<ActionResult<MemberPublicOut>> GetMemberById(int id)
         {
@@ -102,7 +107,9 @@ namespace Agriloco.Api.Controllers
             if (member == null)
                 return NotFound();
 
-            var farm = await _context.Farms.FirstOrDefaultAsync(f => f.Id == member.FarmId);
+            if (!member.IsActive || User.FindFirstValue(ClaimTypes.NameIdentifier) != member.Id.ToString())
+                return StatusCode(403);
+            var farm = await _context.Farms.FirstOrDefaultAsync(f => f.Id == member.FarmId && f.IsActive);
             if (farm == null)
                 return NotFound();
 
@@ -127,6 +134,7 @@ namespace Agriloco.Api.Controllers
             return Ok(output);
         }
 
+        [Authorize]
         [HttpGet("byusername/{username}")]
         public async Task<ActionResult<MemberPublicOut>> GetMemberByUsername(string username)
         {
@@ -137,7 +145,9 @@ namespace Agriloco.Api.Controllers
             if (member == null)
                 return NotFound();
 
-            var farm = await _context.Farms.FirstOrDefaultAsync(f => f.Id == member.FarmId);
+            if (!member.IsActive || User.FindFirstValue(ClaimTypes.NameIdentifier) != member.Id.ToString())
+                return StatusCode(403);
+            var farm = await _context.Farms.FirstOrDefaultAsync(f => f.Id == member.FarmId && f.IsActive);
             if (farm == null)
                 return NotFound();
 

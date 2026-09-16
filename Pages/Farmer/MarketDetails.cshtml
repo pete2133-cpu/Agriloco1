@@ -1,0 +1,42 @@
+@page
+@model Agriloco1.Pages.Farmer.MarketDetailsModel
+@using Microsoft.AspNetCore.Mvc.ViewFeatures
+@{
+    ViewData["Title"] = "Market Details";
+}
+<link rel="stylesheet" href="~/css/market-details.css" asp-append-version="true" />
+<section class="market-editor">
+    <a asp-page="/Farmer/Dashboard" asp-route-farmId="@Model.FarmId">← Farmer Dashboard</a>
+    <h1>Market Details · @Model.ItemName</h1>
+    <p>All details are optional. The dashboard's Farm Store checkbox controls whether this item appears in Market. Availability is managed on the dashboard.</p>
+    @if (TempData["MarketSaved"] is string saved) { <p role="status">@saved</p> }
+    <form method="post" enctype="multipart/form-data">
+        <input type="hidden" asp-for="FarmId" /><input type="hidden" asp-for="ItemId" />
+        <div asp-validation-summary="All" role="alert"></div>
+        <div class="market-listing">
+            <div>
+                @if (Model.HasImage) { <img class="market-preview" src="@Url.Page("/Farmer/MarketDetails", "Image", new { Model.FarmId, Model.ItemId })" alt="Current market image" /> }
+                <label>Image (optional, PNG/JPEG/WebP, up to 5 MB)<input asp-for="ImageUpload" type="file" accept="image/png,image/jpeg,image/webp" /></label>
+                @if (Model.HasImage) { <label class="market-check"><input asp-for="RemoveImage" /> Remove image</label> }
+            </div>
+            <div>
+                <label>Display name<input asp-for="Listing.DisplayName" placeholder="@Model.ItemName" maxlength="160" /></label>
+                <label>Short description<textarea asp-for="Listing.Description" maxlength="500" rows="3"></textarea></label>
+                <label>Category<input asp-for="Listing.Category" maxlength="100" /></label>
+                <small>Leave blank to use the existing name and crop category.</small>
+            </div>
+        </div>
+        <h2>Selling options</h2>
+        <p>Add a price or package only if useful. Inventory tracking is stored as a preference; it does not deduct stock or change availability.</p>
+        <div id="selling-options">
+            @for (var i = 0; i < Model.Options.Count; i++)
+            {
+                <partial name="_MarketOption" model="Model.Options[i]" view-data="@(new ViewDataDictionary(ViewData) { ["OptionIndex"] = i.ToString() })" />
+            }
+        </div>
+        <button id="add-selling-option" type="button">+ Add Selling Option</button>
+        <template id="selling-option-template"><partial name="_MarketOption" model="@(new Agriloco1.Pages.Farmer.MarketDetailsModel.OptionInput())" view-data="@(new ViewDataDictionary(ViewData) { ["OptionIndex"] = "__index__" })" /></template>
+        <div class="market-editor-actions"><button type="submit">Save</button><a asp-page="/Farmer/Dashboard" asp-route-farmId="@Model.FarmId">Cancel</a></div>
+    </form>
+</section>
+<script src="~/js/market-details.js" asp-append-version="true" defer></script>

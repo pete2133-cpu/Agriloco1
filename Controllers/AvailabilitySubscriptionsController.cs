@@ -6,6 +6,9 @@ using Agriloco.Api.Models;
 using Agriloco1.Models.Inventory;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Agriloco.Api.Services;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Text.Encodings.Web;
 
 namespace Agriloco.Api.Controllers
 {
@@ -14,11 +17,90 @@ namespace Agriloco.Api.Controllers
     public class AvailabilitySubscriptionsController : ControllerBase
     {
         private readonly AgrilocoContext _db;
+        private readonly AvailabilityUnsubscribeLinks _links;
+        private readonly ILogger<AvailabilitySubscriptionsController> _logger;
 
         public AvailabilitySubscriptionsController(
-            AgrilocoContext db)
+            AgrilocoContext db, AvailabilityUnsubscribeLinks links,
+            ILogger<AvailabilitySubscriptionsController> logger)
         {
             _db = db;
+            _links = links;
+            _logger = logger;
+        }
+
+        public sealed class BatchRequest
+        {
+            public int FarmId { get; set; }
+            public int[] FarmDefinitionIds { get; set; } = Array.Empty<int>();
+            public string Email { get; set; } = "";
+        }
+
+        [HttpPost("batch")]
+        [EnableRateLimiting("availability-signup")]
+        public async Task<IActionResult> SubscribeBatch([FromBody] BatchRequest request)
+        {
+            var email = (request.Email ?? "").Trim().ToLowerInvariant();
+            var ids = (request.FarmDefinitionIds ?? Array.Empty<int>()).Distinct().ToArray();
+            if (email.Length > 320 || !IsReasonableEmail(email))
+                return BadRequest(new { code = "invalid_email", message = "Please enter a valid email address." });
+            if (request.FarmId <= 0 || ids.Length == 0 || ids.Length > 500)
+                return BadRequest(new { code = "no_products", message = "No products are available for notifications with this selection." });
+            try
+            {
+                var catalog = (await AvailabilitySignupCatalog.LoadAsync(_db, request.FarmId))
+                    .Where(x => x.FarmDefinitionId.HasValue && ids.Contains(x.FarmDefinitionId.Value)).ToList();
+                if (catalog.Count != ids.Length)
+                    return BadRequest(new { code = "no_products", message = "No products are available for notifications with this selection." });
+
+                // Success means the subscriptions are committed, including existing subscriptions.
+                // Future availability emails are sent by DashboardAvailabilityNotifications.
+                await _db.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+                {
+                    _db.ChangeTracker.Clear();
+                    await using var transaction = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+                    foreach (var id in ids.OrderBy(x => x))
+                    {
+                        var result = await Subscribe(new CreateAvailabilitySubscriptionRequest { FarmId = request.FarmId, FarmDefinitionId = id, Email = email });
+                        if (result is not OkObjectResult) throw new InvalidOperationException("Selected subscription became unavailable.");
+                    }
+                    await transaction.CommitAsync();
+                });
+                return Ok(new { success = true });
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception, "Availability signup persistence failed for farm {FarmId}, {SelectionCount} selections.", request.FarmId, ids.Length);
+                return StatusCode(500, new { code = "signup_failed", message = "We couldn't complete your signup. Please try again." });
+            }
+        }
+
+        // GET only presents a confirmation, so mail-link scanners do not unsubscribe people.
+        [HttpGet("unsubscribe")]
+        public IActionResult UnsubscribePage([FromQuery] string token)
+        {
+            if (_links.Read(token) == null) return BadRequest("This unsubscribe link is invalid.");
+            Response.Headers.CacheControl = "no-store";
+            Response.Headers["Referrer-Policy"] = "no-referrer";
+            return Content("<!doctype html><html><meta name=viewport content='width=device-width,initial-scale=1'><title>Unsubscribe</title>" +
+                "<body><h1>Unsubscribe from farm availability emails</h1><form method=post>" +
+                "<input type=hidden name=token value='" + HtmlEncoder.Default.Encode(token) +
+                "'><button>Unsubscribe</button></form></body></html>", "text/html");
+        }
+
+        [HttpPost("unsubscribe")]
+        public async Task<IActionResult> Unsubscribe([FromForm] string token)
+        {
+            var recipient = _links.Read(token);
+            if (recipient == null) return BadRequest("This unsubscribe link is invalid.");
+            var subscriptions = await _db.FarmDefinitionAvailabilitySubscriptions
+                .Where(x => x.FarmId == recipient.FarmId && x.Email == recipient.Email && x.Channel == "email" && x.IsActive).ToListAsync();
+            foreach (var subscription in subscriptions) subscription.IsActive = false;
+            var legacy = await _db.FarmAvailabilityAlertSubscriptions.Where(x => x.FarmId == recipient.FarmId &&
+                x.Destination == recipient.Email && x.Channel == "email" && !x.IsFulfilled).ToListAsync();
+            foreach (var subscription in legacy) { subscription.IsFulfilled = true; subscription.FulfilledAt = DateTime.UtcNow; }
+            await _db.SaveChangesAsync();
+            return Content("You have been unsubscribed from this farm's availability emails.", "text/plain");
         }
 
         // ============================================================
@@ -129,13 +211,8 @@ namespace Agriloco.Api.Controllers
                 string definitionType =
                     selectedDefinition.DefinitionType ?? "";
 
-                bool validSubscriptionType =
-                    definitionType.Equals(
-                        "Product",
-                        StringComparison.OrdinalIgnoreCase) ||
-                    definitionType.Equals(
-                        "Variety",
-                        StringComparison.OrdinalIgnoreCase);
+                bool validSubscriptionType = AvailabilitySignupCatalog.IsSelection(selectedDefinition,
+                    await _db.FarmDefinitions.AsNoTracking().Where(x => x.FarmId == request.FarmId).ToListAsync());
 
                 if (!validSubscriptionType)
                 {

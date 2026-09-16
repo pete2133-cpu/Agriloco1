@@ -1,4 +1,5 @@
-﻿using System;
+using Agriloco.Api.Security;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http.Json;
@@ -9,6 +10,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace Agriloco.Api.Pages.Farmer
 {
+    [FarmMapWrite]
     public class GridPainterModel : PageModel
     {
         private readonly IHttpClientFactory _httpClientFactory;
@@ -130,7 +132,10 @@ namespace Agriloco.Api.Pages.Farmer
                 FeatureType = featureTypeToUse
             };
 
-            var resp = await client.PostAsJsonAsync("/api/Map/cells", payload);
+            using var message = new HttpRequestMessage(HttpMethod.Post, "/api/Map/cells") { Content = JsonContent.Create(payload) };
+            message.Headers.TryAddWithoutValidation("Cookie", Request.Headers.Cookie.ToString());
+            message.Headers.TryAddWithoutValidation("Origin", client.BaseAddress!.GetLeftPart(UriPartial.Authority));
+            using var resp = await client.SendAsync(message);
 
             if (!resp.IsSuccessStatusCode)
             {

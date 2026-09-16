@@ -1,10 +1,12 @@
-﻿using Agriloco.Api.Data;
+using Agriloco.Api.Security;
+using Agriloco.Api.Data;
 using Agriloco.Api.Dtos;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace Agriloco.Api.Controllers
 {
+    [DevelopmentOnly]
     [ApiController]
     [Route("api/[controller]")]
     public class SearchAnalyticsController : ControllerBase

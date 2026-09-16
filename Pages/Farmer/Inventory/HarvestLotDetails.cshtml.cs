@@ -27,7 +27,7 @@ namespace Agriloco1.Pages.Farmer.Inventory
         {
             var lot = await _db.HarvestLots.FindAsync(Id);
 
-            if (lot == null)
+            if (lot == null || lot.FarmId != FarmId)
             {
                 return NotFound();
             }
@@ -41,7 +41,7 @@ namespace Agriloco1.Pages.Farmer.Inventory
         {
             var existing = await _db.HarvestLots.FindAsync(HarvestLot.Id);
 
-            if (existing == null)
+            if (existing == null || existing.FarmId != FarmId)
             {
                 return NotFound();
             }

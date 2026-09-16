@@ -12,13 +12,15 @@ public record AvailabilityDeliveryResult(int Sent, int Failed)
         : "Availability saved. No matching subscribers to notify.";
 }
 
-public sealed class DashboardAvailabilityNotifications(AgrilocoContext db, IEmailSender sender, ILogger logger)
+public sealed class DashboardAvailabilityNotifications(AgrilocoContext db, IEmailSender sender, ILogger logger, AvailabilityUnsubscribeLinks links)
 {
+    public static string NotificationStatus(string? status) => PublicFoodCatalog.IsAvailable(status) ? "Available" :
+        string.Equals(status, "Coming Soon", StringComparison.OrdinalIgnoreCase) ? "Coming Soon" : "";
     public async Task<AvailabilityDeliveryResult> SendAsync(int farmId, IReadOnlyCollection<int> changedIds)
     {
-        var listings = (await PublicFoodCatalog.LoadAsync(db, farmId))
+        var listings = (await AvailabilitySignupCatalog.LoadAsync(db, farmId))
             .Where(x => x.FarmDefinitionId.HasValue && changedIds.Contains(x.FarmDefinitionId.Value)
-                && PublicFoodCatalog.IsAvailable(x.Availability)).ToList();
+                && NotificationStatus(x.Availability) != "").ToList();
         if (listings.Count == 0) return new(0, 0);
         var nodes = await db.FarmDefinitions.AsNoTracking().Where(x => x.FarmId == farmId).ToDictionaryAsync(x => x.Id);
         HashSet<int> Ancestors(int id)
@@ -42,7 +44,7 @@ public sealed class DashboardAvailabilityNotifications(AgrilocoContext db, IEmai
             Item = item,
             Definitions = subscriptions.Where(x => x.FarmDefinitionId == null || paths[item.FarmDefinitionId!.Value].Contains(x.FarmDefinitionId.Value)).ToList(),
             // Match legacy category/variety names within this farm, never interchangeable numeric IDs.
-            Legacy = legacySubscriptions.Where(x => legacyCrops.Any(c => c.Id == x.CropId
+            Legacy = legacySubscriptions.Where(x => PublicFoodCatalog.IsAvailable(item.Availability) && legacyCrops.Any(c => c.Id == x.CropId
                 && Same(c.Category, item.Category) && (Same(c.Variety, item.Variety) || string.IsNullOrWhiteSpace(c.Variety)))).ToList()
         }).ToList();
         var recipients = matches.SelectMany(x => x.Definitions.Select(s => s.Email).Concat(x.Legacy.Select(s => s.Destination)))
@@ -53,11 +55,14 @@ public sealed class DashboardAvailabilityNotifications(AgrilocoContext db, IEmai
         {
             var relevant = matches.Where(x => x.Definitions.Any(s => Same(s.Email, recipient)) || x.Legacy.Any(s => Same(s.Destination, recipient))).ToList();
             var names = relevant.Select(x => string.IsNullOrWhiteSpace(x.Item.Variety) ? x.Item.Category : $"{x.Item.Category} — {x.Item.Variety}").Distinct().ToList();
-            var body = $"Good news!\n\nNow available at {farmName}:\n" + string.Join("\n", names.Select(x => "• " + x))
-                + "\n\nAvailability can change during the day. Check the farm's current Agriloco listing before visiting.";
+            var updates = relevant.Select(x => $"{x.Item.Category}" + (string.IsNullOrWhiteSpace(x.Item.Variety) ? "" : $" - {x.Item.Variety}") +
+                $": {NotificationStatus(x.Item.Availability)}");
+            var body = $"Availability update from {farmName}:\n\n" + string.Join("\n", updates)
+                + "\n\nAvailability can change during the day. Check the farm's current Agriloco listing before visiting."
+                + "\n\nUnsubscribe from this farm's availability emails:\n" + links.Create(farmId, recipient);
             try
             {
-                await sender.SendAsync(recipient, $"{farmName}: {string.Join(", ", names)} now available", body);
+                await sender.SendAsync(recipient, $"{farmName}: {string.Join(", ", names)} availability update", body);
                 var now = DateTime.UtcNow;
                 foreach (var sub in relevant.SelectMany(x => x.Definitions).Where(x => Same(x.Email, recipient)).Distinct()) sub.LastNotifiedAt = now;
                 foreach (var sub in relevant.SelectMany(x => x.Legacy).Where(x => Same(x.Destination, recipient)).Distinct())

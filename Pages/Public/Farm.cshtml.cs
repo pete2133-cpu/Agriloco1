@@ -65,11 +65,6 @@ namespace agriloco.api.Pages.Public
                     Availability = c.Availability,
                     PickingCondition = c.PickingCondition,
                     AvailabilityNote = c.AvailabilityNote,
-                    InventorySource = c.InventorySource,
-                    InventoryExternalId = c.InventoryExternalId,
-                    InventoryQuantity = c.InventoryQuantity,
-                    InventoryStatus = c.InventoryStatus,
-                    InventoryLastSyncAt = c.InventoryLastSyncAt
                 })
                 .ToListAsync();
 

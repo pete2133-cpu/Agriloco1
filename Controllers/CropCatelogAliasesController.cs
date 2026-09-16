@@ -1,4 +1,5 @@
-﻿using Agriloco.Api.Data;
+using Agriloco.Api.Security;
+using Agriloco.Api.Data;
 using Agriloco.Api.Dtos;
 using Agriloco.Api.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -31,6 +32,7 @@ namespace Agriloco.Api.Controllers
         }
 
         // POST: /api/CropCatalogAliases
+        [DevelopmentOnly]
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CropCatalogAliasCreateIn dto)
         {

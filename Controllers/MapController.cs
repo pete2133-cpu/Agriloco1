@@ -1,4 +1,5 @@
-﻿using Agriloco.Api.Data;
+using Agriloco.Api.Security;
+using Agriloco.Api.Data;
 using Agriloco.Api.Dtos;
 using Agriloco.Api.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -51,6 +52,7 @@ namespace Agriloco.Api.Controllers
         }
 
         // POST: /api/Map/cells
+        [FarmMapWrite("input.FarmId")]
         [HttpPost("cells")]
         public async Task<ActionResult<MapCellOut>> CreateCell([FromBody] MapCellCreateIn input)
         {
@@ -128,6 +130,7 @@ namespace Agriloco.Api.Controllers
         }
 
         // DELETE: /api/Map/cells?farmId=1&gridX=10&gridY=20
+        [FarmMapWrite]
         [HttpDelete("cells")]
         public async Task<IActionResult> DeleteCell([FromQuery] int farmId, [FromQuery] int gridX, [FromQuery] int gridY)
         {

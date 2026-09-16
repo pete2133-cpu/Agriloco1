@@ -1,8 +1,19 @@
+@using System.Security.Claims
+@using Microsoft.EntityFrameworkCore
+@inject Agriloco.Api.Data.AgrilocoContext NavigationDb
 @{
     var title = ViewData["Title"] as string ?? "Agriloco";
     var member = Context.Request.Path.StartsWithSegments("/Farmer");
     var modelFarm = ViewData.Model?.GetType().GetProperty("FarmId")?.GetValue(ViewData.Model) as int?;
-    var farmId = modelFarm is > 0 ? modelFarm.Value : int.TryParse(Context.Request.Query["farmId"], out var selectedFarm) && selectedFarm > 0 ? selectedFarm : 1;
+    var authenticated = User.Identity?.IsAuthenticated == true;
+    int? memberFarmId = null;
+    if (authenticated && int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var memberId))
+    {
+        memberFarmId = await NavigationDb.Members.AsNoTracking()
+            .Where(m => m.Id == memberId && m.IsActive && m.Farm != null && m.Farm.IsActive)
+            .Select(m => (int?)m.FarmId).FirstOrDefaultAsync();
+    }
+    var farmId = modelFarm is > 0 ? modelFarm : int.TryParse(Context.Request.Query["farmId"], out var selectedFarm) && selectedFarm > 0 ? selectedFarm : memberFarmId;
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -20,11 +31,22 @@
             <a class="brand" asp-page="/Search/Crops"><strong>Agriloco<span>.</span></strong><small>Find local food.</small></a>
             <nav class="primary-nav" aria-label="Main navigation">
                 <a asp-page="/Search/Crops">Find food</a>
-                <a asp-page="/Farmer/Dashboard" asp-route-farmId="@farmId">Farmer dashboard</a>
+                @if (authenticated)
+                {
+                    <a asp-page="/Farmer/Dashboard" asp-route-farmId="@memberFarmId">Farmer dashboard</a>
+                }
+                else
+                {
+                    <a asp-page="/Farmer/Login">Farmer Login</a>
+                }
                 <a asp-page="/Farmer/Register">List your farm</a>
+                @if (authenticated)
+                {
+                    <a asp-page="/Farmer/Logout">Sign out</a>
+                }
             </nav>
         </div>
-        @if (member)
+        @if (member && authenticated)
         {
             <nav class="member-nav" aria-label="Farmer navigation">
                 <a asp-page="/Farmer/Dashboard" asp-route-farmId="@farmId">Availability</a>
